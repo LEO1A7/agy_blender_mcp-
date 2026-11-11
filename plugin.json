@@ -1,0 +1,12 @@
+{
+  "name": "agy-autonomous-mcp-modeling-plugin",
+  "displayName": "AGY Autonomous MCP 3D Modeling",
+  "version": "1.2.0",
+  "description": "High-completion autonomous 3D CAD/hard-surface modeling in Blender from multi-view blueprints via MCP. Features pixel-ruler calibration, handedness alignment, zero-clutter autonomous stepwise BMesh construction, and official Blender MCP reference architecture with on-demand recipes.",
+  "logo": "assets/logo.svg",
+  "suggestedPrompts": [
+    "根据输入的三视图，自主在Blender中完成高精度三维建模并输出三视图对比图",
+    "为当前三视图生成像素坐标标定网格，解算比例尺并在Blender中分层建模",
+    "渲染当前Blender场景的三列轮廓比对图与双等轴测图，自主通过MCP检索工具进行比对与微调"
+  ]
+}

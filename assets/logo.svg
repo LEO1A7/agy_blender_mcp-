@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <rect x="12" y="12" width="104" height="104" rx="18" fill="#1E242B" stroke="#4DA8DA" stroke-width="4"/>
+  <!-- Coordinate Grid -->
+  <line x1="24" y1="64" x2="104" y2="64" stroke="#2E4052" stroke-width="2" stroke-dasharray="4,4"/>
+  <line x1="64" y1="24" x2="64" y2="104" stroke="#2E4052" stroke-width="2" stroke-dasharray="4,4"/>
+  <!-- Isometric Wedge Turret / CAD Wireframe -->
+  <polygon points="64,28 100,46 88,78 64,92 40,78 28,46" fill="#3B4D3B" stroke="#8CE99A" stroke-width="3" stroke-linejoin="round"/>
+  <polygon points="64,28 100,46 64,62 28,46" fill="#4E664E" stroke="#8CE99A" stroke-width="2.5" stroke-linejoin="round"/>
+  <line x1="64" y1="62" x2="64" y2="92" stroke="#8CE99A" stroke-width="2.5"/>
+  <!-- Barrel Axis -->
+  <line x1="64" y1="62" x2="20" y2="84" stroke="#FFD43B" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="64" cy="62" r="4" fill="#FF6B6B"/>
+</svg>
