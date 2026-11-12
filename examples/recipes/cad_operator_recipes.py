@@ -1,5 +1,5 @@
 """[RECIPE_CAD_KIT] BMesh 参数化 CAD 算子全集 · 纯 BMesh 拓扑体检 · 5 机位 Workbench 摄影棚 · 构件状态感知与微调
-- 适用 (When): 需一站式导入或按行切片查阅场景/诊断染色(L20)、拓扑体检(L192)、5大BMesh算子(L269)、5机位摄影棚(L472)、构件AABB感知与微调(L638)
+- 适用 (When): 需一站式导入或按行切片查阅场景/随机分色与材质交付(L19)、拓扑体检、5大BMesh算子、5机位摄影棚、构件AABB感知与微调
 - 用法 (How) : 优先 `head -n 6 examples/recipes/case_r*.py` 按子模块调取；或 `sys.path.append(".../examples/recipes"); import cad_operator_recipes`
 - 产出 (Out) : 提供闭合流形 BMesh 构造、0 非流形体检报告、1:1 正交+双等轴测 5 机位及无损几何替换/位姿微调
 """
@@ -15,19 +15,6 @@ from mathutils import Vector, Matrix, Euler
 # ==============================================================================
 # 1. SCENE, COLLECTION, HIERARCHY & MATERIAL MANAGEMENT
 # ==============================================================================
-
-# High-contrast diagnostic palette for L1 Coarse-to-Fine decoupled group inspection
-DIAGNOSTIC_COLOR_PALETTE = {
-    "hull_macro":        (0.88, 0.22, 0.28, 1.0),  # Crimson Red
-    "turret_macro":      (0.12, 0.68, 0.45, 1.0),  # Emerald Green
-    "gun_mantlet":       (0.15, 0.52, 0.92, 1.0),  # Cobalt Blue
-    "tracks_loop":       (0.85, 0.52, 0.12, 1.0),  # Amber Orange
-    "wheels_repetitive": (0.62, 0.28, 0.88, 1.0),  # Amethyst Purple
-    "rollers_sprocket":  (0.10, 0.72, 0.78, 1.0),  # Cyan Teal
-    "hull_detail":       (0.92, 0.76, 0.18, 1.0),  # Gold Yellow
-    "turret_detail":     (0.90, 0.28, 0.65, 1.0),  # Magenta Pink
-}
-
 
 def setup_clean_scene(root_collection_name="CAD_Model_Root"):
     """Deletes ALL objects (hidden/excluded included), purges orphan datablocks, sets metric units (1.0m).
@@ -51,7 +38,7 @@ def setup_clean_scene(root_collection_name="CAD_Model_Root"):
     scene = bpy.context.scene
     scene.unit_settings.system = 'METRIC'
     scene.unit_settings.scale_length = 1.0
-    set_diagnostic_color_mode('RANDOM')
+    set_shading_color_mode('RANDOM')
 
     root_col = get_or_create_collection(root_collection_name)
     return scene, root_col
@@ -125,62 +112,6 @@ def add_angle_bevel(obj, width=0.008, segments=2, angle_deg=30.0):
     return bev
 
 
-# Generic high-contrast palette for NON-vehicle models (buildings, plant, mechanisms): objects are
-# coloured by the first token of their name (`Steel_Frame_Grid` -> "steel"), so every subsystem gets
-# its own colour instead of the whole scene collapsing into the vehicle fallback group.
-GENERIC_GROUP_PALETTE = [
-    (0.88, 0.22, 0.28, 1.0), (0.12, 0.68, 0.45, 1.0), (0.15, 0.52, 0.92, 1.0), (0.85, 0.52, 0.12, 1.0),
-    (0.62, 0.28, 0.88, 1.0), (0.10, 0.72, 0.78, 1.0), (0.92, 0.76, 0.18, 1.0), (0.90, 0.28, 0.65, 1.0),
-    (0.55, 0.80, 0.20, 1.0), (0.30, 0.35, 0.90, 1.0), (0.95, 0.45, 0.35, 1.0), (0.40, 0.60, 0.55, 1.0),
-]
-_VEHICLE_KEYS = ("track", "wheel", "torsion", "hub", "roller", "sprocket", "idler", "gun", "barrel", "mantlet",
-                 "bore", "muzzle", "hull", "turret")
-
-
-def _generic_group(obj_name: str, col_name: str = "") -> str:
-    token = (obj_name.replace("-", "_").split("_")[0] or col_name or "misc").lower()
-    return f"g:{token}"
-
-
-def _group_color(grp: str, palette=None):
-    pal = palette or DIAGNOSTIC_COLOR_PALETTE
-    if grp in pal:
-        return pal[grp]
-    if grp.startswith("g:"):
-        idx = sum(ord(ch) * (i + 1) for i, ch in enumerate(grp[2:])) % len(GENERIC_GROUP_PALETTE)
-        return GENERIC_GROUP_PALETTE[idx]
-    return (0.75, 0.75, 0.75, 1.0)
-
-
-def infer_diagnostic_group(obj_name: str, col_name: str = "") -> str:
-    """Infers a diagnostic color group from object/collection name.
-
-    Vehicle keywords keep the legacy L1 groups (hull/turret/gun/tracks...). Anything else is grouped
-    by its first name token (`g:<token>`) and coloured from GENERIC_GROUP_PALETTE.
-    """
-    low = obj_name.lower()
-    clow = col_name.lower()
-    if not any(k in low or k in clow for k in _VEHICLE_KEYS):
-        return _generic_group(obj_name, col_name)
-    if "track" in low:
-        return "tracks_loop"
-    if "wheel" in low or "torsion" in low or "hub" in low:
-        return "wheels_repetitive"
-    if "roller" in low or "sprocket" in low or "idler" in low:
-        return "rollers_sprocket"
-    if "gun" in low or "barrel" in low or "mantlet" in low or "bore" in low or "muzzle" in low:
-        return "gun_mantlet"
-    if "hull" in low or "hull" in clow:
-        if any(k in low for k in ("tub", "upperbody", "main", "glacis", "skirt")):
-            return "hull_macro"
-        return "hull_detail"
-    if "turret" in low or "turret" in clow:
-        if any(k in low for k in ("main", "body", "shell", "cheek", "bustle")):
-            return "turret_macro"
-        return "turret_detail"
-    return "hull_detail"
-
-
 def _thin_safe_bevel(bm, requested):
     """Clamp a requested bevel width to 30% of the 10th-percentile edge length of `bm` so thin members
     (louver blades, 12 mm rails, battens) are not rounded into mush by a fixed 8 mm bevel."""
@@ -191,11 +122,9 @@ def _thin_safe_bevel(bm, requested):
     return w if w >= 0.0005 else 0.0
 
 
-def create_mesh_object(name, bm, col, mat=None, bevel_width=0.008, bevel_segments=2, color_group=None,
-                       thin_safe=True):
+def create_mesh_object(name, bm, col, mat=None, bevel_width=0.008, bevel_segments=2, thin_safe=True):
     """
-    Converts a BMesh `bm` into a Blender Mesh Object, frees `bm`, applies angle-limited bevel,
-    and assigns its diagnostic object color (`obj.color`) for instant L4 inspection toggling.
+    Converts a BMesh `bm` into a Blender Mesh Object, frees `bm`, and applies an angle-limited bevel.
 
     `thin_safe=True` (default) clamps `bevel_width` to the object's thinnest features; pass
     `thin_safe=False` to force the exact width. `mat` may be a single material or a list of materials
@@ -218,15 +147,11 @@ def create_mesh_object(name, bm, col, mat=None, bevel_width=0.008, bevel_segment
             obj.data.materials.append(m)
     if bevel_width > 0:
         add_angle_bevel(obj, width=bevel_width, segments=bevel_segments)
-
-    grp = color_group or infer_diagnostic_group(name, col.name if col else "")
-    obj["diagnostic_group"] = grp
-    obj.color = _group_color(grp)
     return obj
 
 
 def _sync_shading_color_type(color_type: str, outline: bool = True):
-    """Syncs `color_type` ('RANDOM' | 'MATERIAL' | 'OBJECT') across Workbench render and all 3D Viewports."""
+    """Syncs `color_type` ('RANDOM' | 'MATERIAL') across Workbench render and all 3D Viewports."""
     scene = bpy.context.scene
     if hasattr(scene, "display") and hasattr(scene.display, "shading"):
         scene.display.shading.color_type = color_type
@@ -242,39 +167,87 @@ def _sync_shading_color_type(color_type: str, outline: bool = True):
                             sp.shading.show_object_outline = True
 
 
-def set_diagnostic_color_mode(enable=True, palette: dict = None) -> dict:
+def set_shading_color_mode(mode='RANDOM') -> dict:
     """
     Switches Workbench & 3D Viewport shading color mode:
-      - `enable=True` or `'RANDOM'` (default): Blender built-in random per-object color ('RANDOM')
-      - `enable=False` or `'MATERIAL'`: PBR material color ('MATERIAL') for material observation & delivery
-      - `enable='OBJECT'`: custom diagnostic group palette ('OBJECT')
+      - `'RANDOM'` (or True): Blender built-in random per-object color for geometry verification
+      - `'MATERIAL'` (or False): PBR material color for material observation & final delivery
     """
-    if isinstance(enable, str):
-        mode = enable.upper()
-        if mode not in ('RANDOM', 'MATERIAL', 'OBJECT'):
-            mode = 'RANDOM'
+    if isinstance(mode, bool):
+        ctype = 'RANDOM' if mode else 'MATERIAL'
+    elif isinstance(mode, str):
+        ctype = mode.upper()
     else:
-        mode = 'RANDOM' if enable else 'MATERIAL'
+        raise ValueError(f"mode must be 'RANDOM', 'MATERIAL', or bool, got {mode!r}")
+    if ctype not in ('RANDOM', 'MATERIAL'):
+        raise ValueError(f"mode must be 'RANDOM' or 'MATERIAL', got {mode!r}")
 
-    counts = {}
-    if mode == 'OBJECT':
-        pal = dict(DIAGNOSTIC_COLOR_PALETTE)
-        if palette:
-            pal.update(palette)
-        for obj in bpy.data.objects:
-            if obj.type != 'MESH':
-                continue
-            col_name = obj.users_collection[0].name if obj.users_collection else ""
-            grp = obj.get("diagnostic_group") or infer_diagnostic_group(obj.name, col_name)
-            obj["diagnostic_group"] = grp
-            obj.color = _group_color(grp, pal)
-            counts[grp] = counts.get(grp, 0) + 1
-
-    _sync_shading_color_type(mode, outline=True)
+    _sync_shading_color_type(ctype, outline=True)
     return {
-        "diagnostic_mode": mode != 'MATERIAL',
-        "shading_color_type": mode,
-        "group_counts": counts,
+        "shading_color_type": ctype,
+        "diagnostic_mode": ctype == 'RANDOM',
+    }
+
+
+set_diagnostic_color_mode = set_shading_color_mode
+
+
+def _resolve_mat(val):
+    if isinstance(val, str):
+        mat = bpy.data.materials.get(val)
+        if mat is None:
+            raise ValueError(f"Material not found: {val!r}")
+        return mat
+    return val
+
+
+def finish_materials(rules: dict, default=None, ignore_prefixes=("Studio", "Cam_", "BBOX_")) -> dict:
+    """Assign materials to MESH objects by prefix/fnmatch rules, apply optional `default` to unmatched
+    meshes lacking a material, and switch viewport shading to `'MATERIAL'`."""
+    import fnmatch
+    resolved = [(k, _resolve_mat(v)) for k, v in (rules or {}).items()]
+    wildcard_rules = [(k, m) for k, m in resolved if "*" in k or "?" in k]
+    prefix_rules = sorted([(k, m) for k, m in resolved if "*" not in k and "?" not in k], key=lambda kv: -len(kv[0]))
+    default_mat = _resolve_mat(default) if default is not None else None
+
+    assigned, kept_existing = 0, 0
+    unmatched = []
+    for obj in bpy.data.objects:
+        if obj.type != 'MESH' or any(obj.name.startswith(p) for p in ignore_prefixes):
+            continue
+        matched_mat = None
+        for pat, mat in wildcard_rules:
+            if fnmatch.fnmatch(obj.name, pat):
+                matched_mat = mat
+                break
+        if matched_mat is None:
+            for pref, mat in prefix_rules:
+                if obj.name.startswith(pref):
+                    matched_mat = mat
+                    break
+        if matched_mat is not None:
+            obj.data.materials.clear()
+            obj.data.materials.append(matched_mat)
+            for poly in obj.data.polygons:
+                poly.material_index = 0
+            assigned += 1
+        else:
+            unmatched.append(obj.name)
+            has_mat = any(m is not None for m in obj.data.materials)
+            if has_mat:
+                kept_existing += 1
+            elif default_mat is not None:
+                obj.data.materials.clear()
+                obj.data.materials.append(default_mat)
+                for poly in obj.data.polygons:
+                    poly.material_index = 0
+
+    _sync_shading_color_type('MATERIAL', outline=True)
+    return {
+        "assigned": assigned,
+        "kept_existing": kept_existing,
+        "unmatched": unmatched,
+        "shading_color_type": "MATERIAL",
     }
 
 
@@ -479,7 +452,7 @@ def build_wavy_skirt_panels(
 
             obj = create_mesh_object(
                 f"{prefix}_{side_tag}_{p_idx+1}", bm, col, mat,
-                bevel_width=0.006, color_group="hull_macro"
+                bevel_width=0.006,
             )
             created.append(obj)
     return created
@@ -783,15 +756,13 @@ def setup_workbench_studio_and_cameras(
 
     scene.render.engine = 'BLENDER_WORKBENCH'
     scene.display.shading.light = 'STUDIO'
-    if isinstance(diagnostic_colors, str):
-        ctype = diagnostic_colors.upper()
-    elif diagnostic_colors is True:
-        ctype = 'RANDOM'
-    elif diagnostic_colors is False:
-        ctype = 'MATERIAL'
-    else:
+    if diagnostic_colors is None:
         cur = getattr(scene.display.shading, "color_type", "RANDOM")
-        ctype = cur if cur in ('RANDOM', 'MATERIAL', 'OBJECT') else 'RANDOM'
+        ctype = cur if cur in ('RANDOM', 'MATERIAL') else 'RANDOM'
+    elif isinstance(diagnostic_colors, str) and diagnostic_colors.upper() in ('RANDOM', 'MATERIAL'):
+        ctype = diagnostic_colors.upper()
+    else:
+        raise ValueError("diagnostic_colors must be None, 'RANDOM', or 'MATERIAL'")
     _sync_shading_color_type(ctype, outline=True)
     scene.display.shading.show_cavity = True
     scene.display.shading.cavity_type = 'BOTH'
@@ -901,7 +872,11 @@ def setup_workbench_studio_and_cameras(
 def describe_studio() -> dict:
     """Axis mapping / framing of the last `setup_workbench_studio_and_cameras` call (print it before
     comparing renders with blueprints)."""
-    return dict(LAST_STUDIO_META)
+    meta = dict(LAST_STUDIO_META)
+    yaw_obj = bpy.data.objects.get("Site_Yaw")
+    meta["site_yaw_deg"] = round(math.degrees(yaw_obj.rotation_euler.z), 3) if yaw_obj else 0.0
+    meta["yaw_note"] = "Orthogonal building frame (+X East, +Y North); Site_Yaw applied at delivery only."
+    return meta
 
 
 _VIEW_FILE_TAG = {"Cam_Side_Left": "side", "Cam_Side_Right": "side_right", "Cam_Top": "top", "Cam_Front": "front",

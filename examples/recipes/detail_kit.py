@@ -456,7 +456,8 @@ def _auto_bevel_width(bm, cap=0.006):
 def finalize_object(name, bm, col, materials=None, bevel="auto", smooth=False, group=None, merge_dist=0.0):
     """BMesh -> object in `col` (replaces same-name object). materials: list of bpy Materials mapped to
     face.material_index. bevel='auto' | metres | 0. merge_dist>0 welds coincident verts (off by default:
-    welding touching solids would create non-manifold edges). Frees `bm`."""
+    welding touching solids would create non-manifold edges). `group` is ignored (RANDOM shading is used). Frees `bm`."""
+    _ = group  # deprecated: RANDOM shading does not use per-object color groups
     old = bpy.data.objects.get(name)
     if old:
         bpy.data.objects.remove(old, do_unlink=True)
@@ -477,8 +478,6 @@ def finalize_object(name, bm, col, materials=None, bevel="auto", smooth=False, g
         b = obj.modifiers.new("Bevel", 'BEVEL')
         b.width, b.segments = bevel_w, 1
         b.limit_method, b.angle_limit = 'ANGLE', math.radians(35.0)
-    if group:
-        obj["diagnostic_group"] = group
     return obj
 
 
@@ -551,18 +550,28 @@ def ledger_check(scene=None):
     }
 
 
-_PROFILE_HINTS = ("beam", "column", "post", "rail", "mullion", "slat", "batten", "louver", "shutter",
-                  "pipe", "chimney", "frame", "joist", "purlin", "stringer", "heb", "hea", "ipe", "upn")
+_PROFILE_HINTS = ("beam", "column", "rail", "mullion", "slat", "batten", "louver", "shutter",
+                  "chimney", "joist", "purlin", "stringer", "heb", "hea", "ipe", "upn")
+_DEFAULT_AUDIT_WHITELIST = ("*Wall*", "*Slab*", "*Roof*", "*Glass*", "*Sill*", "*Lintel*", "*Parapet*", "*Stair*", "*Step*")
 
 
-def detail_audit(scene=None, big_box_min_dim=0.4):
+def _is_whitelisted(obj, patterns):
+    if obj.get("detail_audit_ok"):
+        return True
+    return any(fnmatch.fnmatch(obj.name, p) for p in patterns)
+
+
+def detail_audit(scene=None, big_box_min_dim=0.4, whitelist=()):
     """Heuristic detail-fidelity audit of the live scene:
       - `box_standins`: primitive-box meshes whose NAME suggests a profiled/repeated member (beam, slat, rail...)
-      - `large_plain_boxes`: plain boxes with a side > big_box_min_dim (legit for massing, but confirm vs references)
+        excluding objects matching `whitelist`, built-in architectural shell defaults, or `obj['detail_audit_ok']`
+      - `large_plain_boxes`: plain boxes with a side > big_box_min_dim (legit for massing, confirm vs references)
       - `repeat_groups`: object families by stripped numeric suffix (proves arrays were really modelled)
-      - `tris_total` and per-collection object counts.
+      - `tris_total` and object counts.
     """
     scene = scene or bpy.context.scene
+    extra = json.loads(scene.get("detail_audit_whitelist", "[]")) if scene.get("detail_audit_whitelist") else []
+    patterns = tuple(_DEFAULT_AUDIT_WHITELIST) + tuple(whitelist or ()) + tuple(extra)
     meshes = [o for o in scene.objects if o.type == 'MESH']
     stand, big = [], []
     fam = {}
@@ -571,7 +580,7 @@ def detail_audit(scene=None, big_box_min_dim=0.4):
         tris += sum(max(1, len(p.vertices) - 2) for p in o.data.polygons)
         low = o.name.lower()
         if _is_primitive_box(o):
-            if any(h in low for h in _PROFILE_HINTS):
+            if any(h in low for h in _PROFILE_HINTS) and not _is_whitelisted(o, patterns):
                 stand.append(o.name)
             if max(o.dimensions) > big_box_min_dim:
                 big.append(f"{o.name} {tuple(round(d, 2) for d in o.dimensions)}")
