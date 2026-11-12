@@ -1,123 +1,82 @@
 ---
 name: autonomous-mcp-blueprint-modeling
-description: >-
-  Autonomous 3D CAD, architectural, and hard-surface modeling in Blender from
-  multi-view blueprints and reference photos via MCP (`execute_blender_code`).
-  Covers pixel-grid calibration, reference detail tiling, handedness alignment,
-  3-tier stepwise BMesh & true structural profile construction, visual closeup
-  inspection, and perception-driven refinement.
+description: Autonomous 3D CAD, architectural, and hard-surface modeling in Blender from multi-view blueprints and reference photos via MCP. Anchored on Building Spec JSON, rotated plan leveling, section slab detection, bmesh floor-cut IoU/rule verification, native RANDOM shading, and 3-tier structural profile fidelity.
 ---
 
-# Autonomous MCP Blueprint 3D Modeling Skill
+# Autonomous MCP Blueprint & Reference Modeling (v1.4.0)
 
-## Overview
-
-This skill provides an interactive, high-precision engineering workflow for modeling 3D assets (architecture, structural steelwork, vehicles, and industrial hardware) in Blender directly from multi-view blueprints and reference photos via MCP (`execute_blender_code`).
-
-To prevent detail loss on complex targets, the agent organizes every build into a **3-Tier Progressive Decomposition (L1 Macro Massing ➔ L2 Structural Profiles & Repetitive Arrays ➔ L3 Fine Hardware & Joints)** and verifies both global proportions and close-up structural details:
-
-1. **Scale Calibration & Detail Inventory**:
-   - **Orthographic blueprints / floor plans / sections / dimensioned axonometrics**: Overlay a semi-transparent 50px/100px red/blue coordinate grid (`bin/blueprint_grid_calib.py`) to compute the scale $s$ ($\text{m/px}$) and linear coordinate mappings.
-   - **Perspective photos / dimensionless views**: Skip full-image linear grid mapping, **but NEVER skip detail extraction** — run `bin/reference_detail_tiles.py` to generate zoomed, sharpened detail tiles (`contact_sheet.png`) and record a 3-tier **Feature Ledger** (`ledger_set` in `CASE_R08`) covering every visible structural profile (e.g., HEB 220 H-beams), louver shutter, slat array, railing, and joint.
-2. **Handedness & Dual Convention Alignment**: Lock the 3D right-hand coordinate system under either `"vehicle"` convention ($\mathbf{Forward} = -Y$, $\mathbf{Starboard} = -X$, $\mathbf{Port} = +X$) or `"plan_north_up"` architectural convention ($\mathbf{North} = +Y$, $\mathbf{East} = +X$, $\mathbf{South/Front} = -Y$, $\mathbf{West/Left} = -X$).
-3. **Autonomous Stepwise BMesh & True-Profile Modeling**: Build components progressively across MCP calls. **Never substitute profiled members (H/I-beams, channels, louver blades, rhombic slats, window frames, railings) with plain 6-face bounding boxes or 3 overlapping cubes** — use `CASE_R08` (`case_r08_detail_profiles_and_ledger.py`) or native 2D profile extrusion to produce watertight single-manifold solids.
-4. **Visual Inspection, Closeup Verification & MCP Refinement**: Render full-scene 5-camera views (`CASE_R04`) plus close-up renders (`render_closeup`) of key structural joints, run `audit_scene_meshes()`, `detail_audit()`, and `ledger_check()`, and refine components in-place (`CASE_R05`).
-
-> **6-Line Header Progressive Disclosure & Inherited Blender N-Panel Addon**:
-> - Every recipe (`examples/recipes/case_r01`..`case_r08`), CLI utility (`bin/*.py`), reference (`references/*.md`), and official Blender MCP file (`examples/official_blender_mcp/`, body untouched) starts with a standardized 6-line `When / How / Out` header. Run `head -n 6` to screen capabilities in ~150 tokens before loading internal content.
-> - The Blender N-Panel addon (`addon/agy_blender_bridge.py`: `DSH Blender Bridge` activity/AI-pause lock/`Selection -> AGY` + `环境与角色模型API调用` for Poly Haven, Sketchfab, Poly Pizza, Hyper3D Rodin, Tencent Hunyuan 3D) is available on-demand via `examples/recipes/case_r07_npanel_bridge_and_apis.py` with automatic TCP auto-start suppression in pure MCP mode.
+> 设变量 `$P=~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin`，工作目录 `$W=./agy_work`。全流程按 **P0→P5 六阶段 + 五门禁 (G1–G5)** 递进；任何时刻若上下文被压缩，先跑 `spec_digest(); phase_next()`（`<=40+20` 行）恢复真源状态。
 
 ---
 
-## Quick Start
+## 核心工作流：P0 – P5 六阶段与门禁
+
+### P0 资产盘点与 Spec 初始化
+- 分类输入图：**建筑平/立/剖 + 实景照片**走建筑通道（`plan_prep` + `spec_kit`）；**载具/机械/单体**跳至文末非建筑通道。
+- 创建工作区并用 Blender/Python 初始化 Spec：`from spec_kit import *; spec_init(src="...")`。
+
+### P1 定偏航 · 定比例 · 抓标高（**Gate G1**）
+1. **斜置平面检出偏航**：
+   `python3 $P/bin/plan_prep.py scan --input <plan.img> --out $W`
+   查看 `$W/orient_candidates.png` 与 `$W/scan_sheet.png`，结合透视图南立面方向选定唯一角度 `<deg>`。
+2. **裁切转正 + 精化 + 米制红蓝网**（单图多楼层加 `--layers`）：
+   `python3 $P/bin/plan_prep.py build --input <plan.img> --angle <deg> --roi u0,v0,u1,v1 --refine --out $W`
+3. **剖面楼板抓取与比例传递**：
+   `python3 $P/bin/section_levels.py --input <sec.img> --elev z0,z1,... --mark $W/sec_mark.png --out-json $W/sec_meta.json`（若杂波误判用 `--drop <v_px>` 剔除）
+   `python3 $P/bin/plan_prep.py scale-from-section --meta $W/plan_meta.json --section-scale <s_sec> --section-span-px <Ls> --plan-span u0,v0,u1,v1 --update-spec $W/building_spec.json`（再用 `--scale` 重跑 `build` 生成米制 `$W/plan_roi.png`）。
+4. **实景立面局部切片**：`python3 $P/bin/reference_detail_tiles.py --input <photo_or_plan_rot> --meta $W/plan_meta.json --outdir $W/tiles`。
+5. **Gate G1 (`spec_validate`)**：写入 `frame.yaw_deg/scale_m_per_px` 与 `levels` (`id,z,slab,cut[,zone]`) 后 `spec_validate()` 零 `E_*` 错误方可进入 P2。
+
+### P2 锁定各层外轮廓与立面虚实表（**Gate G2**）
+- 读图先快查 `$P/skills/autonomous-mcp-blueprint-modeling/references/plan_reading_playbook.md` 与 `spec_schema.md`（谨防底层虚线投影误合并、未设 `zone` 错层冲突、内天井 `sub` 遗漏）。
+- 用矩形并差 DSL 写入每层 `outline.<Lx>`（`union/add/sub` 或 `base+add+sub`），写入 `edge_rules`（`SOLID|GLAZED|OPEN|CANTILEVER|RECESS|STEP|LOUVER|SLAT`）及 `elements` 细部台账（`HEB220`、格栅、百叶、栏杆）。
+- **Gate G2**：跑 `python3 $P/bin/plan_prep.py check-outline --meta $W/plan_meta.json --spec $W/building_spec.json --level L0` 校验边界支撑，并通过 `spec_validate()`。
+
+### P3 分段建模 L1→L2→L3 与数值剖切门禁（**Gate G3**）
+1. **开启原生 `RANDOM` 分色**：`COR.setup_clean_scene()` + `COR.set_shading_color_mode('RANDOM')`（严禁覆写物体诊断色或旧调色板）。
+2. **L1 宏观楼板与外围护**（在正交局部系建，保持 `Site_Yaw=0`）：
+   调用 `CASE_R10` (`facade_kit.py`)：`build_all_levels()` 或逐层 `build_level_slab` + `build_envelope` + `add_cantilever`。
+3. **L2/L3 真实型材与细部五金**：
+   用 `CASE_R08` (`detail_kit.py`) 构造真实截面的 `add_steel_member("HEB220",...)`、`add_slat_array`、`add_louver_leaf`、`add_railing`、`add_window` 与檐口法兰，并运行 `DK.detail_audit()` + `DK.ledger_check()` 确认零 6 面方块冒充。
+4. **Gate G3（真几何水平剖切先行）**：
+   调用 `CASE_R11`：`LCV.export_level_cuts()` → `res = LCV.verify_levels(tol_mm=150, iou_min=0.90)`。
+   - **仅在失败层或终验确认时**渲染叠加图定损：
+     `python3 $P/bin/level_plan_render.py --cuts $W/level_cuts.json --spec $W/building_spec.json --level L1 --plan $W/plan_rot.png --meta $W/plan_meta.json --verify $W/verify_L1.json --out $W/overlay_L1.png`
+   - 发现问题后用 `CASE_R05` (`transform_component` / `replace_component_geometry`) 修复并重跑 `verify_levels` 直至全部 `PASS`。
+
+### P4 多视图与节点微距视觉核验（**Gate G4**）
+- 调用 `CASE_R04` (`setup_workbench_studio_and_cameras(convention="plan_north_up", diagnostic_colors="RANDOM")`) 渲染全景多视图及钢柱节点/悬挑/百叶特写 (`render_closeup`)，用 `bin/compose_triview_sheet.py` 拼图送入 `read_file` 审查。
+- 若因透视推断调整构造，须 `spec_patch()` + `spec_note()` 同步回 Spec 并重过 `G3`。
+
+### P5 材质赋予 · 现场偏航 · 交付（**Gate G5**）
+1. `COR.finish_materials({"*Wall*": ..., "*Slab*": ...})` 赋予 PBR 材质并自动切换 `shading.color_type = 'MATERIAL'`；
+2. `SK.apply_site_yaw()` 按 `spec.frame.yaw_deg` 挂载可逆偏航空物体 `Site_Yaw`（`verify_levels()` 在 `Site_Yaw` 下仍恒定通过）；
+3. `CASE_R06` (`execute_grouping_in_blender`) 双层归档，渲染最终 `MATERIAL` 成图并保存 `.blend`。
+
+---
+
+## 极速配方检索与上下文恢复
 
 ```bash
-# Step 0: Fast-screen all modular recipes and CLI utilities (~150 tokens)
-head -n 6 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/examples/recipes/case_r*.py
-head -n 6 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/*.py
-
-# Step 1A (For orthographic blueprints/plans/sections): Generate semi-transparent coordinate grid
-python3 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/blueprint_grid_calib.py \
-  --input /path/to/blueprint.png \
-  --output /path/to/workspace/blueprint_grid.png \
-  --step 50 --major 100 --alpha 0.55
-
-# Step 1B (For perspective reference photos / high-detail façades): Generate zoomed detail tiles + contact sheet
-python3 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/reference_detail_tiles.py \
-  --input /path/to/photo.jpg \
-  --out-dir /path/to/workspace/detail_tiles \
-  --grid 3x3 --zoom 2.0
-
-# Step 2: Stitch rendered views into a composite verification sheet (Mode A, Mode B 1:1 with overlay, or Mode C grid)
-python3 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/compose_triview_sheet.py \
-  --side /path/to/workspace/render_side.png \
-  --top /path/to/workspace/render_top.png \
-  --front /path/to/workspace/render_front.png \
-  --iso /path/to/workspace/render_iso.png \
-  --iso-rear /path/to/workspace/render_iso_rear.png \
-  --output /path/to/workspace/render_triview_sheet.png
+head -n 6 $P/examples/recipes/case_r*.py $P/bin/*.py   # 按需扫报文头（~150 tokens）
 ```
+- **核心配方表**：`R01` 场景/RANDOM染色 · `R02` BMesh流形体检 · `R03` 载具曲面算子 · `R04` 5机位+节点特写 · `R05` 位姿微调CRUD · `R06` 交付群组 · `R07` N面板/外部API · `R08` 钢型材/百叶/格栅/窗/台账 · **`R09`** `spec_kit` Spec状态机 · **`R10`** `facade_kit` 多孔楼板/免布尔开洞/悬挑错层 · **`R11`** `level_cut_verify` `z+cut`真几何剖切IoU验收。
+- **非建筑通道（载具/机械）**：跳过 `plan_prep`/`section_levels`/`R10`/`R11`，用 `blueprint_grid_calib.py` 标定三视图、`reference_detail_tiles.py` 切细部、`R03`+`R08` 建模、`R04(convention="vehicle", diagnostic_colors="RANDOM")` 核验 + `finish_materials()` 交付。
 
 ---
 
-## Detailed Workflow & Best Practices
+## Flash 执行速览示例（斜置悬挑住宅）
 
-### Stage 1: Scale Calibration & 3-Tier Detail Inventory
-
-1. **Orthographic Drawings (`bin/blueprint_grid_calib.py`)**:
-   - Valid for **orthographic tri-views, floor plans, elevations, sections, and dimensioned axonometric views**.
-   - Use `--crop u0,v0,u1,v1 --zoom 2.0` to inspect small elevation markers or wall thicknesses while keeping coordinate labels in original source-image pixels.
-   - Calculate $s = L_{\text{real}} / \Delta u_{\text{px}}\; (\text{m/px})$ and define `px_to_x`, `px_to_y`, `px_to_z`.
-2. **Perspective Photos & Detail Extraction (`bin/reference_detail_tiles.py`)**:
-   - Full-image linear pixel grid mapping does not apply to perspective photos, **but perspective photos are often the primary source of structural and material detail** (e.g., H-beam flange/web geometry, louver slat tilt, cladding gaps, chimney brackets, railings).
-   - Run `bin/reference_detail_tiles.py` and read `contact_sheet.png` + top-ranked detail tiles to inventory every subsystem across three tiers:
-     - **L1 (Macro Massing & Structural Grid)**: Primary column axes, floor slab elevations, core walls, roof planes.
-     - **L2 (Structural Profiles & Repetitive Arrays)**: Exposed steel columns/beams (`HEB220`, `HEA`, `IPE`, `UPN`, `RHS`, `SHS`, `L`), timber slat cladding arrays (`add_slat_array`), folding louver shutters (`add_louver_leaf`), railings (`add_railing`).
-     - **L3 (Fine Hardware, Fenestration & Joints)**: Multi-mullion window frames & recessed glazing (`add_window`), chimney rings/flanges (`add_flange_ring`), base plates, flashing caps.
-   - Register the planned features in the scene ledger via `ledger_set([...])` from `case_r08_detail_profiles_and_ledger`.
-
----
-
-### Stage 2: Handedness & Dual Coordinate Conventions
-
-`setup_workbench_studio_and_cameras(..., convention=...)` supports two standard right-handed conventions and automatically computes camera `standoff` and `clip_end` from the live scene bounding box so cameras never clip inside large buildings:
-
-| Convention | Primary Use | `Cam_Front` looks from | `Cam_Side_Left` looks from | `Cam_Top` Up-on-Image |
-| :--- | :--- | :--- | :--- | :--- |
-| **`"vehicle"`** (default) | Vehicles, aircraft, machinery (Nose = $-Y$, Up = $+Z$, Starboard = $-X$, Port = $+X$) | $-Y \to +Y$ (Left=$-X$, Right=$+X$) | $+X \to -X$ (Left=$-Y$ Nose, Right=$+Y$ Rear) | $-X$ (Starboard at top, Nose $-Y$ at left) |
-| **`"plan_north_up"`** | Architecture & site plans (North = $+Y$, South = $-Y$, East = $+X$, West = $-X$, Up = $+Z$) | $-Y \to +Y$ South elevation (Left=$-X$ West, Right=$+X$ East) | $-X \to +X$ West elevation (Left=$+Y$ North, Right=$-Y$ South) | $+Y$ (North at top, East $+X$ at right) |
-
----
-
-### Stage 3: Autonomous Stepwise BMesh & True-Profile Modeling
-
-- **Native Random Object Color at Modeling Start (Zero Context Overhead)**:
-  - As soon as modeling begins, switch Blender's built-in Viewport/Workbench Shading to **Object -> Random** (`color_type = 'RANDOM'`, `show_object_outline = True`) so every object is automatically differentiated for VLM inspection without extra code or palette context:
-    ```python
-    bpy.context.scene.display.shading.color_type = 'RANDOM'
-    for a in [a for s in bpy.data.screens for a in s.areas if a.type == 'VIEW_3D']:
-        a.spaces.active.shading.color_type = 'RANDOM'
-        a.spaces.active.shading.show_object_outline = True
-    ```
-- **Never Use Box Stand-Ins for Profiled Members**:
-  - Use `from case_r08_detail_profiles_and_ledger import add_steel_member, add_slat_array, add_louver_leaf, add_railing, add_window, add_flange_ring, finalize_object`:
-    - `add_steel_member(bm, "HEB220", p0, p1, up=(1,0,0), fillet_segs=2)`: Extrudes a true 12-vertex (or filleted) single-manifold H-section between any two 3D points `p0` and `p1` with zero internal overlapping faces.
-    - `add_slat_array(bm, p0, p1, z0, z1, pitch, slat_w, slat_t, normal, rhombic=True)`: Generates an array of individual rhombic or rectangular timber slats along a wall span.
-    - `add_louver_leaf(bm, origin, run, normal, width, height, blades=24, tilt_deg=35.0)`: Builds a perimeter shutter frame populated with individually tilted louver blades.
-    - `add_railing(bm, path, height=1.0, mid_rails=3)`: Builds end/intermediate posts, top handrail, and multiple horizontal intermediate bars along a 3D path.
-    - `add_window(bm, origin, run, normal, width, height, panes=(2,2))`: Builds outer frame, mullions, transoms, and recessed glass panes (`materials=[mat_frame, mat_glass]` in `finalize_object`).
-- **Thin-Member Safe Bevel**: Both `create_mesh_object` (`CASE_R01`) and `finalize_object` (`CASE_R08`) automatically clamp bevel width to $\le 30\%$ of the 10th-percentile edge length so thin louver blades or web plates are never distorted.
-
----
-
-### Stage 4: Visual Inspection, Closeup Verification & Refinement Gate
-
-1. **Global & Closeup Technical Renders (`CASE_R04`) + `'RANDOM'` ➔ `'MATERIAL'` Switch**:
-   - **Geometry Verification (`'RANDOM'`)**: Keep `color_type = 'RANDOM'` while calling `setup_workbench_studio_and_cameras(col_studio, convention="plan_north_up" | "vehicle")` and `render_views(output_dir)` so VLM clearly distinguishes individual components and joints.
-   - **Closeup Inspection**: Call `render_closeup(out_path, target=(x,y,z), size=1.8, direction=(1,1,-0.3))` on 1–2 key structural joints (e.g., HEB 220 column-beam cantilever joint + louver shutter + railing) where full-building renders would otherwise compress 15mm flanges to ~1 pixel.
-   - **Material Inspection & Final Delivery (`'MATERIAL'`)**: Once materials are assigned for final observation and delivery, simply switch `color_type = 'MATERIAL'` on `scene.display.shading` and `VIEW_3D` `shading`.
-2. **Automated Topology & Detail Audit (`CASE_R02` + `CASE_R08`)**:
-   - Run `audit_scene_meshes()` (checks non-manifold edges, degenerate faces, unapplied scales, and inverted-normal negative-volume shells).
-   - Run `detail_audit()` (flags any object named `column`, `beam`, `heb`, `louver`, `slat`, `railing`, etc. that was modeled as a 6-face bounding box) and `ledger_check()` (verifies every registered L1/L2/L3 feature exists in the scene).
-3. **In-Place Perception & Refinement (`CASE_R05`)**:
-   - Use `inspect_scene_components`, `transform_component` (mesh-level transform without `bpy.ops` context errors), and `replace_component_geometry` (preserves material slots and world matrix) to fix any alignment or detail discrepancies before final delivery.
+```python
+import sys; sys.path.insert(0, "/home/leo/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/examples/recipes")
+import cad_operator_recipes as COR, detail_kit as DK, spec_kit as SK, facade_kit as FK, level_cut_verify as LCV
+# P0-P2: cli 已转正+19.5deg 算得 scale=0.0565, 写入 building_spec.json 并通过 spec_validate()
+COR.setup_clean_scene(); COR.set_shading_color_mode("RANDOM")
+FK.build_all_levels(wall_t=0.28)
+# P3: 添加外挑 L1 真实 HEB220 柱并校验 G3
+bm = bmesh.new(); [DK.add_steel_member(bm, "HEB220", (x, y, 0.04), (x, y, 2.92)) for x, y in [(16.5,2.5),(16.5,7.5)]]
+DK.finalize_object("HEB220_Cols", bm, COR.get_or_create_collection("L2_Envelope_Detail"))
+assert COR.audit_scene_meshes()["passed"] and DK.detail_audit()["passed"]
+print(LCV.verify_levels(tol_mm=150, iou_min=0.90)["report"])
+# P4-P5: render_views/closeup -> finish_materials(...) -> SK.apply_site_yaw()
+```

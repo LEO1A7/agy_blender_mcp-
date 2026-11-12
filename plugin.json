@@ -1,12 +1,12 @@
 {
   "name": "agy-autonomous-mcp-modeling-plugin",
   "displayName": "AGY Autonomous MCP 3D Modeling",
-  "version": "1.3.0",
-  "description": "High-completion autonomous 3D CAD, architectural, and hard-surface modeling in Blender from multi-view blueprints and reference photos via MCP. Features pixel-ruler calibration, high-density detail tiling, dual coordinate conventions, true structural section profiles (HEB/IPE/louvers/slats/railings), feature ledger audit, and 5-camera + closeup visual verification.",
+  "version": "1.4.0",
+  "description": "Spec-driven autonomous 3D CAD, architectural, and hard-surface modeling in Blender via MCP. Features Building Spec JSON anchoring, rotated plan leveling & metric calibration, section slab elevation fitting, bmesh floor-cut IoU & void-solid verification, native RANDOM shading, reversible Site_Yaw delivery, true structural section profiles (HEB/IPE/louvers/slats/railings), and 5-camera + closeup visual audits.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
-    "根据输入的三视图与参考照片，按 L1/L2/L3 三级细部拆解在Blender中完成高精度三维建模并输出多视图与节点特写对比图",
-    "为当前平面图/剖面图生成半透明像素坐标标定网格，并为实景照片生成高梯度细部放大切片，解算比例尺后分层建模",
-    "渲染当前Blender场景的5机位总览图、1:1边缘轮廓叠合图与关键节点特写，运行拓扑与细部台账审计并闭环微调"
+    "根据输入的平立剖面与实景图，先运行 plan_prep 与 section_levels 转正定标并锁定 Building Spec，再按 L1/L2/L3 在 Blender 完成高精度三维建模并通过水平剖切验收",
+    "对斜置建筑平面图扫描并纠偏偏航角、建立局部正交网格，识别内天井、悬挑与错层轮廓后生成多视图、节点特写与楼层剖切叠加图",
+    "在原生 RANDOM 分色下审校当前 Blender 场景的拓扑、细部台账与各层 z+cut 水平剖切 IoU，修复偏差后执行 finish_materials 与 Site_Yaw 交付"
   ]
 }
