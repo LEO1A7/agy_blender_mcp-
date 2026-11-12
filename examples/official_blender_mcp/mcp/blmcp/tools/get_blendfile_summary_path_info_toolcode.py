@@ -1,3 +1,8 @@
+"""[OFF_CODE_PATHS] 官方 MCP 查询 Blender 路径与版本信息的内联源码
+- 适用 (When): 参考如何读取 `bpy.data.filepath` 与 `bpy.app` 信息
+- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
+- 产出 (Out) : 返回路径信息结构
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

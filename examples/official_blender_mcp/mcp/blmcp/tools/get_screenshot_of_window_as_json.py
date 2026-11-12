@@ -1,3 +1,8 @@
+"""[OFF_TOOL_WIN_JSON] 官方 MCP 窗口布局结构 JSON 获取工具定义 (get_screenshot_of_window_as_json)
+- 适用 (When): 需以 JSON 形式感知当前窗口各 Area 的类型、坐标与尺寸布局
+- 用法 (How) : 直接调 MCP 工具 `get_screenshot_of_window_as_json`
+- 产出 (Out) : 返回窗口 Area 矩形布局 JSON
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

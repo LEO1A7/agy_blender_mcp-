@@ -1,3 +1,8 @@
+"""[OFF_CODE_WIN_JSON] 官方 MCP 提取窗口 Area 布局坐标的 Blender 端源码
+- 适用 (When): 参考如何遍历 `window.screen.areas` 获取各面板屏幕坐标
+- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
+- 产出 (Out) : 返回窗口布局结构数据
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

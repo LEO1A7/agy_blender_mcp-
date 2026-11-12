@@ -1,3 +1,8 @@
+"""[OFF_LOCAL_LLM] Blender 官方 MCP 本地大模型接入配置指南
+- 适用 (When): 参考官方如何配置本地 LLM 客户端与 Blender MCP 服务端连接
+- 用法 (How) : 按需 `read_file` 阅读（只读官方配置指南）
+- 产出 (Out) : 提供 llama.cpp 等本地客户端接入 Blender MCP 的标准命令与参数
+"""
 #########
 Local LLM
 #########

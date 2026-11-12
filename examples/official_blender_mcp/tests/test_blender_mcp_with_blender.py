@@ -1,3 +1,8 @@
+"""[OFF_TEST_BLENDER] 官方 MCP 与 Blender 交互的标准集成测试用例集
+- 适用 (When): 参考官方如何编写与验证 MCP 工具调用、场景查询与代码执行的端到端测试
+- 用法 (How) : 按需 `read_file` 阅读测试范式（原文件只读）
+- 产出 (Out) : 提供全套官方 MCP 工具的标准调用与断言示范
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

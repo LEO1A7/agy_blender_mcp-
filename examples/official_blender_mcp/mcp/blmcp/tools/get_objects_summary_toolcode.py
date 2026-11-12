@@ -1,3 +1,8 @@
+"""[OFF_CODE_OBJS] 官方 MCP 遍历场景集合树与对象摘要的 Blender 端内联源码
+- 适用 (When): 在 `execute_blender_code` 中需要轻量遍历场景 Collection 层级与对象可见性/父子关系
+- 用法 (How) : 参考或复用本文件中的 `_collection_summary` / `main()` 遍历写法（原文件只读）
+- 产出 (Out) : 返回包含 `collections` 递归树与对象属性的 `Result` 结构
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

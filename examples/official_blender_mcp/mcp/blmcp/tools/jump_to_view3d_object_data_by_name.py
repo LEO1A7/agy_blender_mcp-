@@ -1,3 +1,8 @@
+"""[OFF_TOOL_JUMP_DATA] 官方 MCP 按数据块名称聚焦 3D 视口对象工具定义 (jump_to_view3d_object_data_by_name)
+- 适用 (When): 已知 Mesh/Curve 数据块名，需在 3D 视口定位引用它的对象
+- 用法 (How) : 直接调 MCP 工具 `jump_to_view3d_object_data_by_name`
+- 产出 (Out) : 聚焦引用该数据块的场景对象
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

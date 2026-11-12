@@ -1,3 +1,8 @@
+"""[OFF_CODE_SHOT_WIN] 官方 MCP 整窗截图的 Blender 端源码
+- 适用 (When): 参考官方整窗截图与异步文件检查实现
+- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
+- 产出 (Out) : 生成整窗截图文件
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

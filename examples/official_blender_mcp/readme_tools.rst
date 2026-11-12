@@ -1,3 +1,8 @@
+"""[OFF_TOOLS_DOC] Blender 官方 MCP 23 项原生工具参数与功能速查手册
+- 适用 (When): 需快速确认官方 MCP 各工具名称（如 execute_blender_code、render_viewport_to_path）及参数签名
+- 用法 (How) : `read_file` 阅读对应工具段落（只读官方工具手册）
+- 产出 (Out) : 列出全部官方 MCP 工具的功能说明、输入参数与无头 CLI 变体
+"""
 #####
 Tools
 #####

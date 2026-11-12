@@ -1,3 +1,8 @@
+"""[OFF_CODE_OBJ_DETAIL] 官方 MCP 提取单对象网格/材质/修改器/变换详情的 Blender 端源码
+- 适用 (When): 在自定义脚本中需要按官方标准提取单个对象的 Mesh 统计、修改器栈或世界坐标信息
+- 用法 (How) : 按需读取本文件中的属性提取逻辑（原文件只读）
+- 产出 (Out) : 返回包含对象变换、数据块、材质槽与修改器列表的详细字典
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

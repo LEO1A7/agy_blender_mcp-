@@ -1,3 +1,8 @@
+"""[OFF_TOOL_OBJ_DETAIL] 官方 MCP 单对象详细拓扑/变换/材质/修改器查询工具定义 (get_object_detail_summary)
+- 适用 (When): 需查询特定对象的世界矩阵、包围盒、顶点数、修改器与约束详情
+- 用法 (How) : 直接调 MCP 工具 `get_object_detail_summary`；实现代码见 `get_object_detail_summary_toolcode.py`
+- 产出 (Out) : 返回指定对象的详细结构化摘要字典
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

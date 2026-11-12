@@ -1,3 +1,8 @@
+"""[OFF_TOOL_LIBS] 官方 MCP 外部链接库摘要工具定义 (get_blendfile_summary_of_linked_libraries)
+- 适用 (When): 检查当前工程引用的外部 `.blend` 库及关联数据块
+- 用法 (How) : 直接调 MCP 工具 `get_blendfile_summary_of_linked_libraries`
+- 产出 (Out) : 返回外部链接库摘要
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

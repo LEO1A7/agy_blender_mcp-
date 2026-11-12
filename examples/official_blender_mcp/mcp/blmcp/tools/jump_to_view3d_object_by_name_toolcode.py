@@ -1,3 +1,8 @@
+"""[OFF_CODE_JUMP_OBJ] 官方 MCP 3D 视口对焦指定对象的 Blender 端源码
+- 适用 (When): 参考如何选中对象并在 VIEW_3D 区域调用 `view_selected`
+- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
+- 产出 (Out) : 完成视口镜头对焦并返回状态
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

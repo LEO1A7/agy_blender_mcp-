@@ -1,3 +1,8 @@
+"""[OFF_TOOL_USAGE] 官方 MCP 工程用途智能推断工具定义 (get_blendfile_summary_usage_guess)
+- 适用 (When): 快速判断未知 `.blend` 文件的主要用途（建模/动画/合成/雕刻等）
+- 用法 (How) : 直接调 MCP 工具 `get_blendfile_summary_usage_guess`
+- 产出 (Out) : 返回工程用途特征摘要
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

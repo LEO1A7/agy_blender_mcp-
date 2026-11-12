@@ -1,3 +1,8 @@
+"""[OFF_CODE_DB_SUM] 官方 MCP 统计 `bpy.data` 全数据块数量的 Blender 端源码
+- 适用 (When): 参考如何轻量遍历 `bpy.data` 统计各类型数据块规模
+- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
+- 产出 (Out) : 返回数据块计数字典
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

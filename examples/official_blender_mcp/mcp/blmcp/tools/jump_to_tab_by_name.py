@@ -1,3 +1,8 @@
+"""[OFF_TOOL_JUMP_TAB] 官方 MCP 切换 Blender 工作区标签页工具定义 (jump_to_tab_by_name)
+- 适用 (When): 需切换 Blender 顶部 Workspace 标签页（如 Layout, Modeling, Shading）
+- 用法 (How) : 直接调 MCP 工具 `jump_to_tab_by_name`
+- 产出 (Out) : 切换至目标工作区并返回状态
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

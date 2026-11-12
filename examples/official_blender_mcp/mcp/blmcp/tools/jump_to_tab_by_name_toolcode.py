@@ -1,3 +1,8 @@
+"""[OFF_CODE_JUMP_TAB] 官方 MCP 切换 `window.workspace` 的 Blender 端源码
+- 适用 (When): 参考如何安全切换 Blender 窗口活动工作区
+- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
+- 产出 (Out) : 返回切换后的工作区状态
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

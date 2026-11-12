@@ -1,50 +1,89 @@
-#!/usr/bin/env python3
-"""
-blueprint_grid_calib.py — Overlays a dual-color pixel coordinate ruler grid onto an input
-blueprint image and optionally computes real-world scale & view crop calibration JSON.
+"""[BIN_GRID_CALIB] 红蓝双色半透明像素标尺网格 · 线性坐标标定 · 局部放大读图 (Blueprint Pixel-Ruler Grid + Zoom)
+- 适用 (When): 【仅对三视图/平面图/立面剖面图/带尺寸的轴测图有效；透视照片/无尺寸轴测图跳过网格，但仍可用 --crop/--zoom 放大读细部】
+- 用法 (How) : python3 bin/blueprint_grid_calib.py --input <raw.png> --output <grid.png> [--step 50 --major 100 --known-mm 7730 --known-px 550 --crop u0,v0,u1,v1 --zoom 3]
+- 产出 (Out) : 带红(X)蓝(Y)标尺的 PNG（默认半透明，不遮挡细线；标注永远为原图像素坐标）+ 可选比例尺/裁剪框 JSON；--crop/--zoom 输出局部放大图
 """
 
 import argparse
 import json
 import os
-from PIL import Image, ImageDraw
+
+from PIL import Image, ImageDraw, ImageFont
 
 
-def generate_grid_overlay(input_path: str, output_path: str, step: int = 50, major: int = 100):
-    img = Image.open(input_path).convert("RGB")
+def _font(size: int):
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
+
+
+def generate_grid_overlay(input_path: str, output_path: str, step: int = 50, major: int = 100,
+                          alpha: float = 0.55, crop=None, zoom: float = 1.0, font_size: int = 0,
+                          rotate_deg: float = 0.0):
+    """Draw the ruler grid in SOURCE-pixel coordinates. alpha<1 keeps thin drawing lines visible under the
+    grid (the old opaque grid hid exactly the fine details we need to read). crop=(u0,v0,u1,v1) + zoom>1
+    upsamples a region first; labels still read source pixels so measurements stay valid."""
+    src = Image.open(input_path).convert("RGB")
+    if abs(rotate_deg) > 1e-4:
+        src = src.rotate(rotate_deg, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(255, 255, 255))
+    u0, v0, u1, v1 = crop if crop else (0, 0, src.width, src.height)
+    u0, v0 = max(0, u0), max(0, v0)
+    u1, v1 = min(src.width, u1), min(src.height, v1)
+    img = src.crop((u0, v0, u1, v1))
+    if zoom != 1.0:
+        img = img.resize((int(round(img.width * zoom)), int(round(img.height * zoom))), Image.Resampling.LANCZOS)
     w, h = img.size
-    draw = ImageDraw.Draw(img)
+    base = img.convert("RGBA")
+    layer = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+    fs = font_size or max(11, min(w, h) // 70)
+    font = _font(fs)
+    a = int(255 * max(0.0, min(1.0, alpha)))
 
-    # Vertical grid lines (X_px in red)
-    for x in range(0, w, step):
-        is_major = (x % major == 0)
-        color = (255, 75, 75) if is_major else (255, 185, 185)
+    first_x = (u0 // step) * step
+    for sx in range(first_x, u1 + 1, step):
+        if sx < u0:
+            continue
+        x = int(round((sx - u0) * zoom))
+        is_major = (sx % major == 0)
+        color = (255, 60, 60, a) if is_major else (255, 150, 150, int(a * 0.8))
         draw.line([(x, 0), (x, h)], fill=color, width=1)
         if is_major:
-            draw.text((x + 2, 2), str(x), fill=(200, 0, 0))
+            draw.text((x + 2, 2), str(sx), fill=(200, 0, 0, 255), font=font)
             if h > 300:
-                draw.text((x + 2, h // 2), str(x), fill=(200, 0, 0))
+                draw.text((x + 2, h // 2), str(sx), fill=(200, 0, 0, 255), font=font)
 
-    # Horizontal grid lines (Y_px in blue)
-    for y in range(0, h, step):
-        is_major = (y % major == 0)
-        color = (75, 75, 255) if is_major else (185, 185, 255)
+    first_y = (v0 // step) * step
+    for sy in range(first_y, v1 + 1, step):
+        if sy < v0:
+            continue
+        y = int(round((sy - v0) * zoom))
+        is_major = (sy % major == 0)
+        color = (60, 60, 255, a) if is_major else (150, 150, 255, int(a * 0.8))
         draw.line([(0, y), (w, y)], fill=color, width=1)
-        draw.text((2, y + 2), str(y), fill=(0, 0, 200))
-        if w > 720:
-            draw.text((int(w * 0.68), y + 2), str(y), fill=(0, 0, 200))
+        if is_major:
+            draw.text((2, y + 2), str(sy), fill=(0, 0, 200, 255), font=font)
+            if w > 720:
+                draw.text((int(w * 0.68), y + 2), str(sy), fill=(0, 0, 200, 255), font=font)
 
+    out = Image.alpha_composite(base, layer).convert("RGB")
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
-    img.save(output_path)
+    out.save(output_path)
     return w, h
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Overlay pixel coordinate ruler grid on blueprint.")
+    parser = argparse.ArgumentParser(description="Overlay pixel coordinate ruler grid on blueprint (optionally zoomed crop).")
     parser.add_argument("--input", required=True, help="Path to raw blueprint image.")
     parser.add_argument("--output", required=True, help="Path to output grid-overlaid PNG.")
-    parser.add_argument("--step", type=int, default=50, help="Minor grid spacing in pixels.")
-    parser.add_argument("--major", type=int, default=100, help="Major grid spacing in pixels.")
+    parser.add_argument("--step", type=int, default=50, help="Minor grid spacing in SOURCE pixels.")
+    parser.add_argument("--major", type=int, default=100, help="Major grid spacing in SOURCE pixels.")
+    parser.add_argument("--alpha", type=float, default=0.55, help="Grid opacity 0..1 (1.0 = legacy opaque lines).")
+    parser.add_argument("--crop", default=None, help="Region 'u0,v0,u1,v1' (source px) to grid/zoom instead of the full image.")
+    parser.add_argument("--zoom", type=float, default=1.0, help="Upsample factor for --crop (e.g. 3 to read fine details).")
+    parser.add_argument("--rotate", type=float, default=0.0, help="CCW rotation angle in degrees to rectify tilted plans before gridding/cropping.")
+    parser.add_argument("--font-size", type=int, default=0, help="Label font size (0 = auto).")
     parser.add_argument("--known-mm", type=float, default=None, help="Optional known reference length in mm.")
     parser.add_argument("--known-px", type=float, default=None, help="Optional pixel span for --known-mm.")
     parser.add_argument("--side-crop", default=None, help="Optional Side view crop box 'u0,v0,u1,v1'.")
@@ -53,15 +92,25 @@ def main():
     parser.add_argument("--calib-json", default=None, help="Optional output path for calibration JSON.")
     args = parser.parse_args()
 
-    w, h = generate_grid_overlay(args.input, args.output, args.step, args.major)
+    crop = tuple(int(x) for x in args.crop.split(",")) if args.crop else None
+    w, h = generate_grid_overlay(args.input, args.output, args.step, args.major, args.alpha, crop, args.zoom, args.font_size, args.rotate)
+    with Image.open(args.input) as src:
+        if abs(args.rotate) > 1e-4:
+            src = src.rotate(args.rotate, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(255, 255, 255))
+        src_w, src_h = src.size
     info = {
         "input": os.path.abspath(args.input),
         "output": os.path.abspath(args.output),
-        "width_px": w,
-        "height_px": h,
+        "source_width_px": src_w,
+        "source_height_px": src_h,
+        "output_width_px": w,
+        "output_height_px": h,
         "step_px": args.step,
         "major_px": args.major,
     }
+    if crop:
+        info["grid_crop"] = list(crop)
+        info["zoom"] = args.zoom
     if args.known_mm and args.known_px:
         m_per_px = (args.known_mm / 1000.0) / args.known_px
         info["scale_m_per_px"] = round(m_per_px, 8)

@@ -1,12 +1,12 @@
 {
   "name": "agy-autonomous-mcp-modeling-plugin",
-  "displayName": "AGY Autonomous MCP 3D Modeling",
-  "version": "1.2.0",
-  "description": "High-completion autonomous 3D CAD/hard-surface modeling in Blender from multi-view blueprints via MCP. Features pixel-ruler calibration, handedness alignment, zero-clutter autonomous stepwise BMesh construction, and official Blender MCP reference architecture with on-demand recipes.",
+  "displayName": "AGY Autonomous MCP 3D Modeling (混合MCP插件01版)",
+  "version": "2.0.0",
+  "description": "High-completion autonomous 3D CAD, architectural, and hard-surface modeling in Blender from multi-view blueprints and reference photos via MCP. Features native random shading, horizontal plan section inspection, 360° perimeter walk, Mode B 1:1 blueprint overlay gate, polygon/splayed-bay builders, true structural profiles (HEB/IPE/louvers/slats/railings), feature ledger audit, and N-Panel external API bridge.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
-    "根据输入的三视图，自主在Blender中完成高精度三维建模并输出三视图对比图",
-    "为当前三视图生成像素坐标标定网格，解算比例尺并在Blender中分层建模",
-    "渲染当前Blender场景的三列轮廓比对图与双等轴测图，自主通过MCP检索工具进行比对与微调"
+    "根据输入的三视图与参考照片，按 L1/L2/L3 三级细部拆解在Blender中完成高精度三维建模并输出多视图与节点特写对比图",
+    "为当前平面图/剖面图生成半透明像素坐标标定网格，并为实景照片生成高梯度细部放大切片，解算比例尺后分层建模",
+    "渲染当前Blender场景的5机位总览图、水平剖切平面图、Mode B 1:1边缘轮廓叠合图与关键节点特写，运行拓扑与细部台账审计并闭环微调"
   ]
 }

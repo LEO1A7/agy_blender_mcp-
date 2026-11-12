@@ -1,3 +1,8 @@
+"""[OFF_TOOL_EXEC] 官方 MCP Python 代码执行器注册定义 (execute_blender_code)
+- 适用 (When): 参考官方 MCP 如何封装并向 Blender 发送 Python 代码及无头 CLI 执行逻辑
+- 用法 (How) : 直接调 MCP 工具 `execute_blender_code`；或读取本文件参考官方 `send_code` 实现
+- 产出 (Out) : 返回代码执行状态与标准输出/错误捕获字典
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

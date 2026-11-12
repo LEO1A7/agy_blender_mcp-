@@ -1,3 +1,8 @@
+"""[OFF_CODE_JUMP_DATA] 官方 MCP 按数据块定位并聚焦场景对象的 Blender 端源码
+- 适用 (When): 参考如何从 `bpy.data` 反向查找使用该数据块的 Object 并对焦
+- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
+- 产出 (Out) : 返回定位并聚焦的对象信息
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

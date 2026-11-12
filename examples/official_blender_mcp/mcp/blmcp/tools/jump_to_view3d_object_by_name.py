@@ -1,3 +1,8 @@
+"""[OFF_TOOL_JUMP_OBJ] 官方 MCP 3D 视口聚焦指定对象工具定义 (jump_to_view3d_object_by_name)
+- 适用 (When): 需将用户 Blender GUI 的 3D 视口镜头平滑对准特定对象
+- 用法 (How) : 直接调 MCP 工具 `jump_to_view3d_object_by_name`
+- 产出 (Out) : 选中对象并将 3D 视口聚焦到该对象包围盒
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

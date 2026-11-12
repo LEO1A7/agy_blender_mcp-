@@ -1,3 +1,8 @@
+"""[OFF_TEST_LLM] 官方 MCP 驱动 LLM 完成 Blender 任务的端到端集成测试案例
+- 适用 (When): 参考官方设计的 LLM + MCP 自动化建模/操作提示词与验收断言
+- 用法 (How) : 按需 `read_file` 阅读（原文件只读）
+- 产出 (Out) : 展示官方多轮工具调用与场景状态检验范式
+"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
