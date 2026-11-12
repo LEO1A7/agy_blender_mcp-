@@ -62,29 +62,25 @@ python3 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/compose_
 
 ## Detailed Workflow & Best Practices
 
-### Stage 1: Scale Calibration, High-Zoom Plan Crops & 360° Perimeter Walk
+### Stage 1: Scale Calibration & 3-Tier Detail Inventory
 
-1. **Orthographic Drawings (`bin/blueprint_grid_calib.py`) & Mandatory High-Zoom Plan Crops**:
+1. **Orthographic Drawings (`bin/blueprint_grid_calib.py`)**:
    - Valid for **orthographic tri-views, floor plans, elevations, sections, and dimensioned axonometric views**.
-   - If the floor plan is rotated on the sheet relative to the building's main axes, pass `--rotate <deg>` to rectify it first.
-   - **Never rely solely on the full-sheet overview**: on composite sheets, always run `--crop u0,v0,u1,v1 --zoom 2.5` (or `3.0`) on the floor plan and sections so room labels, wall steps, and angled bay windows are clearly legible while coordinate labels remain in source pixels.
+   - Use `--crop u0,v0,u1,v1 --zoom 2.0` to inspect small elevation markers or wall thicknesses while keeping coordinate labels in original source-image pixels.
    - Calculate $s = L_{\text{real}} / \Delta u_{\text{px}}\; (\text{m/px})$ and define `px_to_x`, `px_to_y`, `px_to_z`.
-2. **Mandatory 360° Perimeter Walk (Preventing "Photo Bias")**:
-   - Perspective photos only show 1–2 visible facades and hide rear/side walls. You **MUST** perform a closed-loop **360° Perimeter Walk** (CCW or CW around the zoomed floor plan, room by room along all exterior walls) and record every wall step, recess, bay window (including oblique/splayed angles $\ne 90^\circ$), and opening on both visible and photo-blind facades into `ledger_set([...])`.
-3. **Perspective Photos & Detail Extraction (`bin/reference_detail_tiles.py`)**:
+2. **Perspective Photos & Detail Extraction (`bin/reference_detail_tiles.py`)**:
+   - Full-image linear pixel grid mapping does not apply to perspective photos, **but perspective photos are often the primary source of structural and material detail** (e.g., H-beam flange/web geometry, louver slat tilt, cladding gaps, chimney brackets, railings).
    - Run `bin/reference_detail_tiles.py` and read `contact_sheet.png` + top-ranked detail tiles to inventory every subsystem across three tiers:
-     - **L1 (Macro Massing & Polygon Footprint)**: Primary column axes, closed exterior wall polygon vertices (including non-orthogonal turns), floor slab elevations, roof planes.
+     - **L1 (Macro Massing & Structural Grid)**: Primary column axes, floor slab elevations, core walls, roof planes.
      - **L2 (Structural Profiles & Repetitive Arrays)**: Exposed steel columns/beams (`HEB220`, `HEA`, `IPE`, `UPN`, `RHS`, `SHS`, `L`), timber slat cladding arrays (`add_slat_array`), folding louver shutters (`add_louver_leaf`), railings (`add_railing`).
-     - **L3 (Fine Hardware, Splayed Bays & Joints)**: Splayed/polygonal or stepped bay windows (`add_splayed_bay`), multi-mullion window frames & recessed glazing (`add_window`), chimney rings/flanges (`add_flange_ring`), base plates, flashing caps.
-   - Register all planned features in the scene ledger via `ledger_set([...])` from `case_r08_detail_profiles_and_ledger`.
+     - **L3 (Fine Hardware, Fenestration & Joints)**: Multi-mullion window frames & recessed glazing (`add_window`), chimney rings/flanges (`add_flange_ring`), base plates, flashing caps.
+   - Register the planned features in the scene ledger via `ledger_set([...])` from `case_r08_detail_profiles_and_ledger`.
 
 ---
 
-### Stage 2: Handedness, Coordinate Conventions & Polygon Vertex Extraction
+### Stage 2: Handedness & Dual Coordinate Conventions
 
-- **Extract 2D Plan Polygon Vertices Before Modeling Massing**:
-  - Never default to an axis-aligned rectangular box for a building footprint or bay window without first extracting the corner coordinates `[(x0,y0), (x1,y1), ...]` from the zoomed floor plan. Explicitly check whether any wall segment or bay window has a non-$90^\circ$ splayed/oblique edge.
-- `setup_workbench_studio_and_cameras(..., convention=...)` supports two standard right-handed conventions and automatically computes camera `standoff` and `clip_end` from the live scene bounding box so cameras never clip inside large buildings:
+`setup_workbench_studio_and_cameras(..., convention=...)` supports two standard right-handed conventions and automatically computes camera `standoff` and `clip_end` from the live scene bounding box so cameras never clip inside large buildings:
 
 | Convention | Primary Use | `Cam_Front` looks from | `Cam_Side_Left` looks from | `Cam_Top` Up-on-Image |
 | :--- | :--- | :--- | :--- | :--- |
@@ -103,10 +99,8 @@ python3 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/compose_
         a.spaces.active.shading.color_type = 'RANDOM'
         a.spaces.active.shading.show_object_outline = True
     ```
-- **Never Use Box Stand-Ins for Profiled or Splayed Members**:
-  - Use `from case_r08_detail_profiles_and_ledger import add_steel_member, add_polygon_slab, add_polyline_wall, add_splayed_bay, add_slat_array, add_louver_leaf, add_railing, add_window, add_flange_ring, finalize_object`:
-    - `add_polygon_slab(bm, poly_xy, z0, z1)` & `add_polyline_wall(bm, pts_xy, z0, z1, thickness)`: Extrude arbitrary 2D floor/wall polygons with non-$90^\circ$ corners directly from plan coordinates.
-    - `add_splayed_bay(bm, poly_xy, z0, z1, open_edge=0, panes=(2,1))`: Builds a trapezoidal/splayed or stepped bay window (sill slab + head slab + multi-pane window frames along each exterior edge) directly from its plan polygon `poly_xy`.
+- **Never Use Box Stand-Ins for Profiled Members**:
+  - Use `from case_r08_detail_profiles_and_ledger import add_steel_member, add_slat_array, add_louver_leaf, add_railing, add_window, add_flange_ring, finalize_object`:
     - `add_steel_member(bm, "HEB220", p0, p1, up=(1,0,0), fillet_segs=2)`: Extrudes a true 12-vertex (or filleted) single-manifold H-section between any two 3D points `p0` and `p1` with zero internal overlapping faces.
     - `add_slat_array(bm, p0, p1, z0, z1, pitch, slat_w, slat_t, normal, rhombic=True)`: Generates an array of individual rhombic or rectangular timber slats along a wall span.
     - `add_louver_leaf(bm, origin, run, normal, width, height, blades=24, tilt_deg=35.0)`: Builds a perimeter shutter frame populated with individually tilted louver blades.
@@ -116,22 +110,12 @@ python3 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/compose_
 
 ---
 
-### Stage 4: Visual Inspection, Mandatory Mode B Overlay Gate & Refinement
+### Stage 4: Visual Inspection, Closeup Verification & Refinement Gate
 
-1. **Global, Horizontal Plan-Section & Closeup Renders (`CASE_R04`) + Mandatory Mode B Overlay**:
-   - **Geometry Verification (`'RANDOM'`)**: Keep `color_type = 'RANDOM'` while calling `setup_workbench_studio_and_cameras(col_studio, convention="plan_north_up" | "vehicle")` and `render_views(output_dir)`.
-   - **Mandatory Mode B 1:1 Blueprint Overlay Gate (Never substitute `--panel` gallery for Mode B)**:
-     - Whenever orthographic floor plans or elevations exist, you **MUST** verify 1:1 contour alignment before delivery using Mode B `--overlay`.
-     - For buildings where the roof hides floor-plan walls/bays in `Cam_Top`, call `render_plan_section(out_path, cut_z=1.5)` (`CASE_R04`) to slice off the roof at $z=1.5\text{ m}$ and render a true horizontal plan section, then run:
-       ```bash
-       python3 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/compose_triview_sheet.py \
-         --blueprint /path/to/blueprint.png --crop u0,v0,u1,v1 \
-         --render /path/to/render_plan_sec.png --overlay --auto-align \
-         --view-label PLAN --output /path/to/overlay_plan_check.png
-       ```
-       (Pass `--rotate-bp <deg>` if the floor plan on the blueprint is tilted.) Verify that every exterior wall angle and bay window on `[4] OVERLAY` coincides with the blueprint lines.
-   - **Closeup Inspection**: Call `render_closeup(out_path, target=(x,y,z), size=1.8, direction=(1,1,-0.3))` on 1–2 key structural joints or bay windows.
-   - **Material Inspection & Final Delivery (`'MATERIAL'`)**: Once overlay alignment and details are verified and materials are assigned, switch `color_type = 'MATERIAL'` on `scene.display.shading` and `VIEW_3D` `shading`.
+1. **Global & Closeup Technical Renders (`CASE_R04`) + `'RANDOM'` ➔ `'MATERIAL'` Switch**:
+   - **Geometry Verification (`'RANDOM'`)**: Keep `color_type = 'RANDOM'` while calling `setup_workbench_studio_and_cameras(col_studio, convention="plan_north_up" | "vehicle")` and `render_views(output_dir)` so VLM clearly distinguishes individual components and joints.
+   - **Closeup Inspection**: Call `render_closeup(out_path, target=(x,y,z), size=1.8, direction=(1,1,-0.3))` on 1–2 key structural joints (e.g., HEB 220 column-beam cantilever joint + louver shutter + railing) where full-building renders would otherwise compress 15mm flanges to ~1 pixel.
+   - **Material Inspection & Final Delivery (`'MATERIAL'`)**: Once materials are assigned for final observation and delivery, simply switch `color_type = 'MATERIAL'` on `scene.display.shading` and `VIEW_3D` `shading`.
 2. **Automated Topology & Detail Audit (`CASE_R02` + `CASE_R08`)**:
    - Run `audit_scene_meshes()` (checks non-manifold edges, degenerate faces, unapplied scales, and inverted-normal negative-volume shells).
    - Run `detail_audit()` (flags any object named `column`, `beam`, `heb`, `louver`, `slat`, `railing`, etc. that was modeled as a 6-face bounding box) and `ledger_check()` (verifies every registered L1/L2/L3 feature exists in the scene).

@@ -19,14 +19,11 @@ def _font(size: int):
 
 
 def generate_grid_overlay(input_path: str, output_path: str, step: int = 50, major: int = 100,
-                          alpha: float = 0.55, crop=None, zoom: float = 1.0, font_size: int = 0,
-                          rotate_deg: float = 0.0):
+                          alpha: float = 0.55, crop=None, zoom: float = 1.0, font_size: int = 0):
     """Draw the ruler grid in SOURCE-pixel coordinates. alpha<1 keeps thin drawing lines visible under the
     grid (the old opaque grid hid exactly the fine details we need to read). crop=(u0,v0,u1,v1) + zoom>1
     upsamples a region first; labels still read source pixels so measurements stay valid."""
     src = Image.open(input_path).convert("RGB")
-    if abs(rotate_deg) > 1e-4:
-        src = src.rotate(rotate_deg, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(255, 255, 255))
     u0, v0, u1, v1 = crop if crop else (0, 0, src.width, src.height)
     u0, v0 = max(0, u0), max(0, v0)
     u1, v1 = min(src.width, u1), min(src.height, v1)
@@ -82,7 +79,6 @@ def main():
     parser.add_argument("--alpha", type=float, default=0.55, help="Grid opacity 0..1 (1.0 = legacy opaque lines).")
     parser.add_argument("--crop", default=None, help="Region 'u0,v0,u1,v1' (source px) to grid/zoom instead of the full image.")
     parser.add_argument("--zoom", type=float, default=1.0, help="Upsample factor for --crop (e.g. 3 to read fine details).")
-    parser.add_argument("--rotate", type=float, default=0.0, help="CCW rotation angle in degrees to rectify tilted plans before gridding/cropping.")
     parser.add_argument("--font-size", type=int, default=0, help="Label font size (0 = auto).")
     parser.add_argument("--known-mm", type=float, default=None, help="Optional known reference length in mm.")
     parser.add_argument("--known-px", type=float, default=None, help="Optional pixel span for --known-mm.")
@@ -93,10 +89,8 @@ def main():
     args = parser.parse_args()
 
     crop = tuple(int(x) for x in args.crop.split(",")) if args.crop else None
-    w, h = generate_grid_overlay(args.input, args.output, args.step, args.major, args.alpha, crop, args.zoom, args.font_size, args.rotate)
+    w, h = generate_grid_overlay(args.input, args.output, args.step, args.major, args.alpha, crop, args.zoom, args.font_size)
     with Image.open(args.input) as src:
-        if abs(args.rotate) > 1e-4:
-            src = src.rotate(args.rotate, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(255, 255, 255))
         src_w, src_h = src.size
     info = {
         "input": os.path.abspath(args.input),

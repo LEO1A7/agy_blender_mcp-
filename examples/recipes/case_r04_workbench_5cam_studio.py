@@ -1,7 +1,7 @@
-"""[CASE_R04] Stage 4 统一 5 机位 Workbench 摄影棚 · 水平剖切平面图 (`render_plan_section`) · 局部特写
-- 适用 (When): Stage 4 视觉核验，一键架设 5 机位(载具/建筑北上双约定)、渲染水平剖切平面图(`render_plan_section` 切掉屋顶对账平面图)及节点特写
-- 用法 (How) : 在 `execute_blender_code` 中 `from case_r04_workbench_5cam_studio import setup_workbench_studio_and_cameras, render_views, render_plan_section, render_closeup`
-- 产出 (Out) : 返回相机字典，支持 `render_views`、`render_plan_section(out, cut_z=1.5)` (用于 Mode B 1:1 平面图叠合) 与 `render_closeup`
+"""[CASE_R04] Stage 4 统一 5 机位 Workbench Cavity+Outline 摄影棚 (1:1 正交三视图 + 自动锁距双等轴测 + 局部特写)
+- 适用 (When): Stage 4 视口视觉核验，需一键架设三点太阳光、Workbench Cavity+Outline 浅灰底渲染、5 机位(支持载具与建筑北上平面双约定)及节点特写
+- 用法 (How) : 在 `execute_blender_code` 中 `from case_r04_workbench_5cam_studio import setup_workbench_studio_and_cameras, render_views, render_closeup`
+- 产出 (Out) : 返回 `{"Cam_Side_Left", "Cam_Top", "Cam_Front", "Cam_Iso", "Cam_Iso_Rear"}` 相机字典，并支持 `render_views` 与 `render_closeup`
 """
 
 import os
@@ -18,6 +18,5 @@ from cad_operator_recipes import (  # noqa: E402,F401
     setup_workbench_studio_and_cameras,
     describe_studio,
     render_views,
-    render_plan_section,
     render_closeup,
 )

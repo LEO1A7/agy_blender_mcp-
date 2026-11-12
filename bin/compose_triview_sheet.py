@@ -89,40 +89,6 @@ def _fit_letterbox(img: Image.Image, size, fill):
     return canvas, mismatch
 
 
-def _bbox_from_mask(mask: np.ndarray):
-    ys, xs = np.where(mask)
-    if len(xs) == 0:
-        return None
-    return int(xs.min()), int(ys.min()), int(xs.max()) + 1, int(ys.max()) + 1
-
-
-def _auto_align_render_to_bp(ref_crop: Image.Image, render_rgba: Image.Image, fill=(240, 240, 238, 255)) -> Image.Image:
-    """Aligns the foreground bbox of `render_rgba` onto the dark-ink bbox of `ref_crop` so Mode B overlay works
-    even when the blueprint crop has arbitrary margins or the camera ortho_scale had default padding."""
-    w_px, h_px = ref_crop.size
-    bp_gray = np.array(ref_crop.convert("L"))
-    bp_ink = bp_gray < 210
-    r_mask = foreground_mask(render_rgba)
-    bb_bp = _bbox_from_mask(bp_ink)
-    bb_r = _bbox_from_mask(r_mask)
-    if not bb_bp or not bb_r:
-        fit, _ = _fit_letterbox(render_rgba, (w_px, h_px), fill)
-        return fit
-    bx0, by0, bx1, by1 = bb_bp
-    rx0, ry0, rx1, ry1 = bb_r
-    bw, bh = max(1, bx1 - bx0), max(1, by1 - by0)
-    rw, rh = max(1, rx1 - rx0), max(1, ry1 - ry0)
-    r_tight = render_rgba.crop((rx0, ry0, rx1, ry1))
-    scale = min(bw / rw, bh / rh)
-    nw, nh = max(1, int(round(rw * scale))), max(1, int(round(rh * scale)))
-    r_scaled = r_tight.resize((nw, nh), Image.Resampling.LANCZOS)
-    canvas = Image.new("RGBA", (w_px, h_px), fill)
-    px = bx0 + (bw - nw) // 2
-    py = by0 + (bh - nh) // 2
-    canvas.paste(r_scaled, (px, py))
-    return canvas
-
-
 def compose_1to1_side_by_side(
     blueprint_path: str,
     crop_box: tuple,
@@ -130,8 +96,6 @@ def compose_1to1_side_by_side(
     output_path: str,
     view_label: str = "VIEW",
     overlay: bool = False,
-    rotate_bp: float = 0.0,
-    auto_align: bool = False,
 ):
     """
     Generates a 3-column (4 with `overlay`) 1:1 pixel-aligned comparison sheet:
@@ -139,19 +103,14 @@ def compose_1to1_side_by_side(
     with continuous horizontal datum lines at 25%, 50%, 75% height.
     """
     bp = Image.open(blueprint_path).convert("RGB")
-    if abs(rotate_bp) > 1e-4:
-        bp = bp.rotate(rotate_bp, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(255, 255, 255))
     ref_crop = bp.crop(crop_box)
     w_px, h_px = ref_crop.size
 
     render = Image.open(render_path).convert("RGBA")
-    if auto_align:
-        render_fit, mismatch = _auto_align_render_to_bp(ref_crop, render), False
-    else:
-        render_fit, mismatch = _fit_letterbox(render, (w_px, h_px), (240, 240, 238, 255))
-        if mismatch:
-            print(f"WARNING: ASPECT MISMATCH render {render.size} vs blueprint crop {(w_px, h_px)} — render letterboxed, "
-                  f"NOT stretched. Tip: pass --auto-align or render with view_crops.")
+    render_fit, mismatch = _fit_letterbox(render, (w_px, h_px), (240, 240, 238, 255))
+    if mismatch:
+        print(f"WARNING: ASPECT MISMATCH render {render.size} vs blueprint crop {(w_px, h_px)} — render letterboxed, "
+              f"NOT stretched. Re-render at the crop resolution (render_views does this when scale+crops are set).")
 
     render_rgb = render_fit.convert("RGB")
     contour_img = extract_edge_contour(render_fit, internal=True)
@@ -286,18 +245,13 @@ def main():
     parser.add_argument("--crop", default=None, help="Mode B: Blueprint crop box 'u0,v0,u1,v1'.")
     parser.add_argument("--render", default=None, help="Mode B: Path to 1:1 orthographic render PNG.")
     parser.add_argument("--overlay", action="store_true", help="Mode B: add a 4th column, blueprint with red render edges.")
-    parser.add_argument("--rotate-bp", type=float, default=0.0, help="Mode B: CCW rotation angle (deg) applied to blueprint before cropping.")
-    parser.add_argument("--auto-align", action="store_true", help="Mode B: auto-fit render foreground bbox to blueprint ink bbox.")
     parser.add_argument("--view-label", default="SIDE", help="Mode B: View label (SIDE/TOP/FRONT).")
     parser.add_argument("--output", required=True, help="Output composite PNG path.")
     args = parser.parse_args()
 
     if args.blueprint and args.crop and args.render:
         crop_box = tuple(int(x.strip()) for x in args.crop.split(","))
-        w, h = compose_1to1_side_by_side(
-            args.blueprint, crop_box, args.render, args.output, args.view_label,
-            args.overlay, args.rotate_bp, args.auto_align,
-        )
+        w, h = compose_1to1_side_by_side(args.blueprint, crop_box, args.render, args.output, args.view_label, args.overlay)
         print(f"Success! 1:1 Side-by-Side sheet ({w}x{h}) written to: {args.output}")
     elif args.panel:
         panels = []

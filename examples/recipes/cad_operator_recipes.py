@@ -984,62 +984,6 @@ def render_closeup(out_path, target, size, direction=(0.0, 1.0, 0.0), up=(0.0, 0
     return out_path
 
 
-def render_plan_section(out_path, cut_z=1.5, floor_z=0.0, resolution=None, ortho_scale=None, target_center=None) -> str:
-    """Renders a true horizontal floor-plan section at elevation `cut_z` (slices off roof & upper floors via
-    camera `clip_start`) for direct 1:1 Mode B overlay against an architectural floor plan (Grundriss).
-
-    North (+Y) is UP on the image, East (+X) is RIGHT. Automatically inherits `Cam_Top` framing & per-view
-    crop resolution when available so `compose_triview_sheet.py --blueprint ... --crop ... --render ... --overlay`
-    aligns pixel-for-pixel.
-    """
-    scene = bpy.context.scene
-    cam_top = bpy.data.objects.get("Cam_Top")
-    b = scene_bounds()
-    if target_center is None:
-        if cam_top:
-            target_center = (cam_top.location.x, cam_top.location.y, 0.0)
-        elif b:
-            c = (b[0] + b[1]) * 0.5
-            target_center = (c.x, c.y, 0.0)
-        else:
-            target_center = (0.0, 0.0, 0.0)
-
-    per = LAST_STUDIO_META.get("resolution_per_view", {})
-    res = tuple(resolution or per.get("Cam_Top") or LAST_STUDIO_META.get("resolution_default", (1280, 960)))
-    if ortho_scale is None:
-        if cam_top and cam_top.type == 'CAMERA':
-            ortho_scale = cam_top.data.ortho_scale
-        elif b:
-            ext = b[1] - b[0]
-            ortho_scale = _fit_ortho(ext.x, ext.y, res)
-        else:
-            ortho_scale = 12.0
-
-    cam_z = float(cut_z) + 50.0
-    cdata = bpy.data.cameras.new("_plan_sec_tmp")
-    cdata.type = 'ORTHO'
-    cdata.ortho_scale = float(ortho_scale)
-    cdata.clip_start = max(0.01, cam_z - float(cut_z))
-    cdata.clip_end = max(cdata.clip_start + 10.0, cam_z - float(floor_z) + 5.0)
-    cam = bpy.data.objects.new("_plan_sec_tmp", cdata)
-    scene.collection.objects.link(cam)
-    cam.location = Vector((target_center[0], target_center[1], cam_z))
-    cam.rotation_euler = Euler((0.0, 0.0, 0.0), 'XYZ')
-
-    prev = (scene.camera, scene.render.resolution_x, scene.render.resolution_y, scene.render.filepath)
-    try:
-        scene.camera = cam
-        scene.render.resolution_x, scene.render.resolution_y = res
-        scene.render.filepath = out_path
-        os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
-        bpy.ops.render.render(write_still=True)
-    finally:
-        (scene.camera, scene.render.resolution_x, scene.render.resolution_y, scene.render.filepath) = prev
-        bpy.data.objects.remove(cam, do_unlink=True)
-        bpy.data.cameras.remove(cdata)
-    return out_path
-
-
 # ==============================================================================
 # 5. MCP COMPONENT STATE PERCEPTION & IN-PLACE REFINEMENT (CRUD & TRANSFORMS)
 # ==============================================================================
