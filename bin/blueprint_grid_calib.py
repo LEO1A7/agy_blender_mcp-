@@ -1,7 +1,7 @@
-"""[BIN_GRID_CALIB] 红蓝双色半透明像素标尺网格 · 线性坐标标定 · 局部放大读图 (Blueprint Pixel-Ruler Grid + Zoom)
-- 适用 (When): 【仅对三视图/平面图/立面剖面图/带尺寸的轴测图有效；透视照片/无尺寸轴测图跳过网格，但仍可用 --crop/--zoom 放大读细部】
+"""[BIN_GRID_CALIB] 红蓝双色半透明像素标尺网格 · 线性坐标标定 · 局部放大读图 (立面/剖面/轴测专用；平面图请用 plan_prep.py)
+- 适用 (When): 【仅对立面/剖面/传统三视图/带尺寸轴测图有效；倾斜或带场地底图的平面图请用 bin/plan_prep.py；透视照片用 --crop/--zoom 读细部】
 - 用法 (How) : python3 bin/blueprint_grid_calib.py --input <raw.png> --output <grid.png> [--step 50 --major 100 --known-mm 7730 --known-px 550 --crop u0,v0,u1,v1 --zoom 3]
-- 产出 (Out) : 带红(X)蓝(Y)标尺的 PNG（默认半透明，不遮挡细线；标注永远为原图像素坐标）+ 可选比例尺/裁剪框 JSON；--crop/--zoom 输出局部放大图
+- 产出 (Out) : 带红(X)蓝(Y)标尺的 PNG（默认半透明，不遮挡细线；标注永远为原图像素坐标）+ 可选比例尺 JSON；--crop/--zoom 输出局部放大图
 """
 
 import argparse
@@ -82,9 +82,6 @@ def main():
     parser.add_argument("--font-size", type=int, default=0, help="Label font size (0 = auto).")
     parser.add_argument("--known-mm", type=float, default=None, help="Optional known reference length in mm.")
     parser.add_argument("--known-px", type=float, default=None, help="Optional pixel span for --known-mm.")
-    parser.add_argument("--side-crop", default=None, help="Optional Side view crop box 'u0,v0,u1,v1'.")
-    parser.add_argument("--top-crop", default=None, help="Optional Top view crop box 'u0,v0,u1,v1'.")
-    parser.add_argument("--front-crop", default=None, help="Optional Front view crop box 'u0,v0,u1,v1'.")
     parser.add_argument("--calib-json", default=None, help="Optional output path for calibration JSON.")
     args = parser.parse_args()
 
@@ -111,12 +108,7 @@ def main():
         info["scale_mm_per_px"] = round(m_per_px * 1000.0, 4)
         info["px_per_m"] = round(1.0 / m_per_px, 3)
 
-    crops = {}
-    for k, val in [("side", args.side_crop), ("top", args.top_crop), ("front", args.front_crop)]:
-        if val:
-            crops[k] = [int(x.strip()) for x in val.split(",")]
-    if crops:
-        info["view_crops"] = crops
+    # Crops removed in v1.4 (use plan_prep.py for floor-plan ROI calibration)
 
     if args.calib_json:
         with open(args.calib_json, "w", encoding="utf-8") as f:

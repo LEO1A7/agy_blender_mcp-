@@ -1,7 +1,7 @@
-"""[BIN_DETAIL_TILES] 参考图细部读图工具：自动分块放大 + 总览接触表 + 细节密度排序 + 单区域精读
-- 适用 (When): Stage 0 读参考图（尤其透视照片/低分辨率图）时系统性挖掘细部——型钢截面、百叶、栏杆、窗分格、管道接头；避免只看“整体印象”
-- 用法 (How) : python3 bin/reference_detail_tiles.py --input photo.jpg --outdir out/ [--grid 3x3 --zoom 2.5 --overlap 0.15 --top 4] | --crop u0,v0,u1,v1 --zoom 4 --outdir out/
-- 产出 (Out) : outdir/contact_sheet.png(带编号总览) + tile_rXcY.png(放大块) + tiles.json(块→原图像素映射、细节密度排名)；终端打印“最富细节的前N块”路径供优先精读
+"""[BIN_DETAIL_TILES] 参考图细部读图工具：支持 ROI 限定 + 自动分块放大 + 接触表 + 可选密度排序 + 单区域精读
+- 适用 (When): 读参考图（尤其透视照片/高密度图）挖掘细部；平面图应传 `--roi` 或 `--meta plan_meta.json`（默认不按梯度密度排名以免树木误导）
+- 用法 (How) : python3 bin/reference_detail_tiles.py --input photo.jpg --outdir out/ [--roi u0,v0,u1,v1 --meta plan_meta.json --rank none|density --grid 3x3 --zoom 2.5] | --crop u0,v0,u1,v1 --zoom 4 --outdir out/
+- 产出 (Out) : outdir/contact_sheet.png + tile_rXcY.png(放大块) + tiles.json；按 `--rank` 输出优先精读区块或全部 ROI 顺序块
 """
 
 import argparse
@@ -27,8 +27,9 @@ def edge_density(img: Image.Image) -> float:
     return float(np.mean(gx) + np.mean(gy))
 
 
-def make_tiles(src: Image.Image, rows: int, cols: int, overlap: float, zoom: float, sharpen: bool):
+def make_tiles(src: Image.Image, rows: int, cols: int, overlap: float, zoom: float, sharpen: bool, offset_uv=(0, 0)):
     W, H = src.size
+    ox, oy = offset_uv
     tw = W / (cols - (cols - 1) * overlap) if cols > 1 else W
     th = H / (rows - (rows - 1) * overlap) if rows > 1 else H
     step_x = tw * (1 - overlap) if cols > 1 else 0
@@ -44,7 +45,8 @@ def make_tiles(src: Image.Image, rows: int, cols: int, overlap: float, zoom: flo
             big = crop.resize((int(crop.width * zoom), int(crop.height * zoom)), Image.Resampling.LANCZOS)
             if sharpen:
                 big = big.filter(ImageFilter.UnsharpMask(radius=1.6, percent=130, threshold=2))
-            tiles.append({"row": r, "col": c, "box": [u0, v0, u1, v1], "image": big, "density": edge_density(crop)})
+            tiles.append({"row": r, "col": c, "box": [u0 + ox, v0 + oy, u1 + ox, v1 + oy],
+                          "local_box": [u0, v0, u1, v1], "image": big, "density": edge_density(crop)})
     return tiles
 
 
@@ -58,18 +60,22 @@ def stamp(img: Image.Image, text: str) -> Image.Image:
     return out
 
 
-def contact_sheet(src: Image.Image, tiles, rows: int, cols: int, out_path: str, max_w: int = 1800):
+def contact_sheet(src: Image.Image, tiles, rows: int, cols: int, out_path: str, max_w: int = 1800, rank_mode: str = "density"):
     scale = min(1.0, max_w / src.width)
     base = src.resize((int(src.width * scale), int(src.height * scale)), Image.Resampling.LANCZOS).convert("RGB")
     d = ImageDraw.Draw(base)
     f = _font(max(16, base.width // 40))
-    ranked = sorted(tiles, key=lambda t: -t["density"])
-    rank_of = {id(t): i + 1 for i, t in enumerate(ranked)}
+    if rank_mode == "density":
+        ranked = sorted(tiles, key=lambda t: -t["density"])
+        rank_of = {id(t): i + 1 for i, t in enumerate(ranked)}
+    else:
+        rank_of = {id(t): i + 1 for i, t in enumerate(tiles)}
     for t in tiles:
-        u0, v0, u1, v1 = [int(x * scale) for x in t["box"]]
-        hot = rank_of[id(t)] <= max(1, len(tiles) // 3)
+        u0, v0, u1, v1 = [int(x * scale) for x in t["local_box"]]
+        hot = (rank_mode == "density") and (rank_of[id(t)] <= max(1, len(tiles) // 3))
         d.rectangle([u0, v0, u1 - 1, v1 - 1], outline=(255, 60, 60) if hot else (60, 200, 255), width=2)
-        d.text((u0 + 6, v0 + 4), f"r{t['row']}c{t['col']} #{rank_of[id(t)]}", fill=(255, 255, 0), font=f)
+        lbl = f"r{t['row']}c{t['col']} #{rank_of[id(t)]}" if rank_mode == "density" else f"r{t['row']}c{t['col']}"
+        d.text((u0 + 6, v0 + 4), lbl, fill=(255, 255, 0), font=f)
     os.makedirs(os.path.dirname(os.path.abspath(out_path)), exist_ok=True)
     base.save(out_path)
 
@@ -84,6 +90,10 @@ def main():
     ap.add_argument("--no-sharpen", action="store_true", help="Disable unsharp mask after upsampling.")
     ap.add_argument("--top", type=int, default=4, help="Print the N most detail-rich tiles.")
     ap.add_argument("--crop", default=None, help="Single-region mode 'u0,v0,u1,v1' (source px): output one zoomed image.")
+    ap.add_argument("--roi", default=None, help="Restrict tiling strictly to ROI 'u0,v0,u1,v1'.")
+    ap.add_argument("--meta", default=None, help="Optional plan_meta.json; implies ROI & --rank none unless overridden.")
+    ap.add_argument("--rank", choices=["auto", "density", "none"], default="auto",
+                    help="Tile ranking: auto (=none when --roi/--meta is set, else density).")
     ap.add_argument("--prefix", default="tile", help="Tile filename prefix.")
     args = ap.parse_args()
 
@@ -101,28 +111,47 @@ def main():
         print(f"Success! zoomed crop written to: {path}")
         return
 
+    roi_box = None
+    if args.roi:
+        u0, v0, u1, v1 = (int(float(x)) for x in args.roi.split(","))
+        roi_box = (max(0, u0), max(0, v0), min(src.width, u1), min(src.height, v1))
+    elif args.meta:
+        with open(args.meta, "r", encoding="utf-8") as mf:
+            pm = json.load(mf)
+        cand = pm.get("roi_rot") if tuple(src.size) == tuple(pm.get("rot_size", [])) else pm.get("roi_src")
+        if cand:
+            roi_box = (max(0, int(cand[0])), max(0, int(cand[1])), min(src.width, int(cand[2])), min(src.height, int(cand[3])))
+
+    rank_mode = ("none" if (roi_box is not None or args.meta) else "density") if args.rank == "auto" else args.rank
+    work_img = src.crop(roi_box) if roi_box else src
+    off_uv = (roi_box[0], roi_box[1]) if roi_box else (0, 0)
+
     rows, cols = (int(x) for x in args.grid.lower().split("x"))
-    tiles = make_tiles(src, rows, cols, args.overlap, args.zoom, not args.no_sharpen)
+    tiles = make_tiles(work_img, rows, cols, args.overlap, args.zoom, not args.no_sharpen, offset_uv=off_uv)
     meta = []
-    ranked = sorted(tiles, key=lambda t: -t["density"])
+    if rank_mode == "density":
+        ranked = sorted(tiles, key=lambda t: -t["density"])
+    else:
+        ranked = list(tiles)
     for i, t in enumerate(ranked):
         t["rank"] = i + 1
     for t in tiles:
         u0, v0, u1, v1 = t["box"]
         name = f"{args.prefix}_r{t['row']}c{t['col']}.png"
         path = os.path.join(args.outdir, name)
-        stamp(t["image"], f"r{t['row']}c{t['col']} src u{u0}-{u1} v{v0}-{v1} x{args.zoom:g}").save(path)
+        stamp(t["image"], f"r{t['row']}c{t['col']} px u{u0}-{u1} v{v0}-{v1} x{args.zoom:g}").save(path)
         meta.append({"file": path, "row": t["row"], "col": t["col"], "src_box_uv": t["box"],
                      "zoom": args.zoom, "detail_density": round(t["density"], 3), "rank": t["rank"]})
     sheet = os.path.join(args.outdir, "contact_sheet.png")
-    contact_sheet(src, tiles, rows, cols, sheet)
+    contact_sheet(work_img, tiles, rows, cols, sheet, rank_mode=rank_mode)
     with open(os.path.join(args.outdir, "tiles.json"), "w", encoding="utf-8") as f:
-        json.dump({"source": os.path.abspath(args.input), "size": list(src.size), "grid": [rows, cols], "tiles": meta},
+        json.dump({"source": os.path.abspath(args.input), "size": list(src.size), "roi": list(roi_box) if roi_box else None,
+                   "rank_mode": rank_mode, "grid": [rows, cols], "tiles": meta},
                   f, indent=2, ensure_ascii=False)
-    print(f"Success! {len(tiles)} tiles + contact sheet written to: {args.outdir}")
+    print(f"Success! {len(tiles)} tiles (rank={rank_mode}) + contact sheet written to: {args.outdir}")
     print(f"contact_sheet: {sheet}")
     for m in sorted(meta, key=lambda m: m["rank"])[:args.top]:
-        print(f"  detail-rich #{m['rank']}: {m['file']}  (density {m['detail_density']})")
+        print(f"  tile #{m['rank']}: {m['file']}  (density {m['detail_density']})")
 
 
 if __name__ == "__main__":
