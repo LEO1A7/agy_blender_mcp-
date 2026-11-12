@@ -201,7 +201,7 @@ def _resolve_mat(val):
     return val
 
 
-def finish_materials(rules: dict, default=None, ignore_prefixes=("Studio", "Cam_", "BBOX_")) -> dict:
+def finish_materials(rules: dict = None, default=None, ignore_prefixes=("Studio", "Cam_", "BBOX_")) -> dict:
     """Assign materials to MESH objects by prefix/fnmatch rules, apply optional `default` to unmatched
     meshes lacking a material, and switch viewport shading to `'MATERIAL'`."""
     import fnmatch

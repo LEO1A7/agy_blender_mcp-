@@ -629,6 +629,8 @@ def match_rule_to_edges(rule, edges, tol=1e-3):
     rspan = rule.get("span")
     coord = rule.get("coord")
     for e in edges:
+        if e.get("is_hole") and not rule.get("hole"):
+            continue
         if e["side"] != side:
             continue
         if coord is not None and e["coord"] is not None and abs(e["coord"] - float(coord)) > tol:
