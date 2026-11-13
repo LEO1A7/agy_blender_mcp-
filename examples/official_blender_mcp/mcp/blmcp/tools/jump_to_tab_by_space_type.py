@@ -1,8 +1,3 @@
-"""[OFF_TOOL_JUMP_SPACE] 官方 MCP 按编辑器类型跳转工作区工具定义 (jump_to_tab_by_space_type)
-- 适用 (When): 需自动切换到包含特定编辑器（如 VIEW_3D, SHADER_EDITOR）的工作区
-- 用法 (How) : 直接调 MCP 工具 `jump_to_tab_by_space_type`
-- 产出 (Out) : 切换到匹配的 Workspace
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

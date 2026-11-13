@@ -1,8 +1,3 @@
-"""[OFF_CODE_LIBS] 官方 MCP 提取外部链接库关系的 Blender 端源码
-- 适用 (When): 参考如何遍历 `bpy.data.libraries` 及其关联 ID
-- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
-- 产出 (Out) : 返回链接库列表字典
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

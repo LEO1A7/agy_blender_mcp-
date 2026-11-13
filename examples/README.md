@@ -1,17 +1,17 @@
 """[REF_EXAMPLES_INDEX] Blender MCP 官方参考库与模块化 CAD 配方索引 (支持 head -n 6 快筛)
-- 适用 (When): 需按需查找 Building Spec、板块开洞、楼层剖切验收、钢结构型材、5 机位摄影棚、N 面板桥接或 CLI 工具
+- 适用 (When): 需按需查找 Building Spec、板块开洞、楼层剖切验收、钢结构型材、5 机位摄影棚、N 面板桥接或官方 MCP 仓库
 - 用法 (How) : 先跑 `head -n 6 examples/recipes/case_r*.py bin/*.py` 扫描报文头，再按需导入或切片读取
 - 产出 (Out) : 零上下文污染地定位 `CASE_R01`~`CASE_R11`、`bin/*.py` 与官方 `official_blender_mcp/` 核心实现
 """
 
 # Blender MCP 官方参考库与模块化配方索引 (`examples/`)
 
-所有模块化配方 (`examples/recipes/`)、CLI 脚本 (`bin/`)、参考文档 (`references/`) 与官方 Blender MCP 脚本 (`examples/official_blender_mcp/`，官方正文 100% 原样未动) 首部均配有 **6 行标准化报文头 (`When / How / Out`)**：
+所有模块化配方 (`examples/recipes/`)、CLI 脚本 (`bin/`) 与参考文档 (`skills/autonomous-mcp-blueprint-modeling/references/`) 首部均配有 **6 行标准化报文头 (`When / How / Out`)**；`examples/official_blender_mcp/` 为官方 Blender Lab 仓库（100% 原生无改动）：
 
 ```bash
-head -n 6 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/examples/recipes/case_r*.py
-head -n 6 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/bin/*.py
-head -n 6 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/examples/official_blender_mcp/mcp/blmcp/tools/*.py
+head -n 6 ~/.gemini/config/plugins/abmcp/examples/recipes/case_r*.py
+head -n 6 ~/.gemini/config/plugins/abmcp/bin/*.py
+head -n 6 ~/.gemini/config/plugins/abmcp/skills/autonomous-mcp-blueprint-modeling/references/*.md
 ```
 
 ---
@@ -48,16 +48,14 @@ head -n 6 ~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/examples/o
 
 ---
 
-## 3. 官方 Blender MCP 仓库索引 (`examples/official_blender_mcp/`)
+## 3. 官方 Blender MCP 仓库 (`examples/official_blender_mcp/`)
 
-源自 Blender 官方实验室（[projects.blender.org/lab/blender_mcp](https://projects.blender.org/lab/blender_mcp.git)），**官方正文保持 100% 原样未动**，首部配 `[OFF_*]` 6 行报文头：
+源自 Blender 官方实验室（[projects.blender.org/lab/blender_mcp](https://projects.blender.org/lab/blender_mcp.git)，commit `dbbf836`），**保持 100% 原样未动**，并通过根目录 `mcp_config.json` 与 `.venv/bin/blender-mcp` 作为插件内置服务 `abmcp_mcp` 运行：
 
-| 报文头 ID | 对应官方文件路径 | 核心参考价值 |
-| :--- | :--- | :--- |
-| **`[OFF_README]`** | `official_blender_mcp/readme.md` | 官方 Blender MCP 架构总览与双端通信说明 |
-| **`[OFF_TOOLS_DOC]`** | `official_blender_mcp/readme_tools.rst` | 官方原生 MCP 工具名称与参数速查手册 |
-| **`[OFF_TOOL_EXEC]`** | `official_blender_mcp/mcp/blmcp/tools/execute_blender_code.py` | 官方 Python 执行协议、上下文封装与返回消息结构 |
-| **`[OFF_CODE_OBJS]`** | `official_blender_mcp/mcp/blmcp/tools/get_objects_summary_toolcode.py` | 官方遍历场景集合树与提取对象状态的轻量写法 |
-| **`[OFF_CODE_OBJ_DETAIL]`** | `official_blender_mcp/mcp/blmcp/tools/get_object_detail_summary_toolcode.py` | 官方提取网格顶点、面、材质与修改器配置的标准实现 |
-| **`[OFF_CODE_RENDER_VP]`** | `official_blender_mcp/mcp/blmcp/tools/render_viewport_to_path_toolcode.py` | 官方视口渲染、属性备份恢复与多区域截图模式 |
-| **`[OFF_TEST_BLENDER]`** | `official_blender_mcp/tests/test_blender_mcp_with_blender.py` | 官方与 Blender 交互的自动化测试用例与标准调用示范 |
+| 目录 / 文件 | 用途 |
+| :--- | :--- |
+| `official_blender_mcp/mcp/` | 官方 Python MCP 服务端（26 个原生工具 + 随包 Blender 5.2 API 与手册 RST 库） |
+| `official_blender_mcp/addon/blender_mcp_addon/` | 官方 Blender 5.1+ MCP TCP 桥接扩展（同步一份至顶层 `addon/blender_mcp_addon/`） |
+| `official_blender_mcp/readme_tools.rst` | 官方 26 项 MCP 工具名称与说明（完整中文签名表见 `references/official_mcp_tools_and_prompts.md`） |
+| `official_blender_mcp/mcp/blmcp/data/prompts.yml` | 官方 `initial_instructions` 与 Blender 数据块/上下文规则 |
+| `official_blender_mcp/tests/` | 官方单测与端到端 Blender 集成测试集 |

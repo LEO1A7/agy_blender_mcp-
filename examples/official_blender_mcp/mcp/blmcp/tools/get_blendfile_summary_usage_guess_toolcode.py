@@ -1,8 +1,3 @@
-"""[OFF_CODE_USAGE] 官方 MCP 启发式推断工程用途的 Blender 端源码
-- 适用 (When): 参考官方如何通过场景特征推断 `.blend` 用途
-- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
-- 产出 (Out) : 返回用途推断结果
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

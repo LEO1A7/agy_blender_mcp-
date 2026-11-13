@@ -1,8 +1,3 @@
-"""[OFF_TOOL_SHOT_WIN] 官方 MCP 整窗截图工具定义 (get_screenshot_of_window_as_image)
-- 适用 (When): 需获取整个 Blender 窗口截图
-- 用法 (How) : 直接调 MCP 工具 `get_screenshot_of_window_as_image`
-- 产出 (Out) : 返回整窗截图 Image
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

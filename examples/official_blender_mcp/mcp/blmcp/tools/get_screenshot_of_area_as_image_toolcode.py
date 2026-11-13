@@ -1,8 +1,3 @@
-"""[OFF_CODE_SHOT_AREA] 官方 MCP 区域截图 (`temp_override` + `screenshot_area`) 的 Blender 端源码
-- 适用 (When): 需参考官方如何用 `bpy.context.temp_override` 截取指定 Area 的屏幕像素
-- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
-- 产出 (Out) : 保存区域截图并返回完成回调
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

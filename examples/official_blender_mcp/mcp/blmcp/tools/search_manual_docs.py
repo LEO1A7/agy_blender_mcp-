@@ -1,8 +1,3 @@
-"""[OFF_TOOL_SEARCH_MAN] 官方 MCP 检索 Blender 用户手册工具定义 (search_manual_docs)
-- 适用 (When): 需查阅 Blender 官方手册中的功能说明与操作概念
-- 用法 (How) : 直接调 MCP 工具 `search_manual_docs`
-- 产出 (Out) : 返回匹配的官方手册章节
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

@@ -1,8 +1,3 @@
-"""[OFF_TOOL_PATHS] 官方 MCP 工程与系统路径信息工具定义 (get_blendfile_summary_path_info)
-- 适用 (When): 查询当前 `.blend` 文件路径、Blender 版本与资源目录
-- 用法 (How) : 直接调 MCP 工具 `get_blendfile_summary_path_info`
-- 产出 (Out) : 返回工程路径与版本摘要
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

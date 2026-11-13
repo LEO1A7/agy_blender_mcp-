@@ -1,8 +1,3 @@
-"""[OFF_CODE_RENDER_VP] 官方 MCP 视口/相机渲染与属性安全备份恢复的 Blender 端源码
-- 适用 (When): 需参考官方如何在渲染前后无损备份并恢复 `scene.render` 参数及延迟检查输出文件
-- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
-- 产出 (Out) : 安全执行视口渲染并将结果写入 `output_path`
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

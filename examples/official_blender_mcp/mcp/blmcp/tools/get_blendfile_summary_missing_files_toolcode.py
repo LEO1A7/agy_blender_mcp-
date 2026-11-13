@@ -1,8 +1,3 @@
-"""[OFF_CODE_MISSING] 官方 MCP 扫描缺失外部贴图/缓存路径的 Blender 端源码
-- 适用 (When): 参考如何检查 `bpy.data.images` / `libraries` 等外部文件存在性
-- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
-- 产出 (Out) : 返回缺失文件清单
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

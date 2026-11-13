@@ -22,7 +22,7 @@
 
 ```python
 import sys
-sys.path.append("/home/leo/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/examples/recipes")
+sys.path.append("/home/leo/.gemini/config/plugins/abmcp/examples/recipes")
 from case_r07_npanel_bridge_and_apis import (
     ensure_npanel_registered,
     is_ai_paused,

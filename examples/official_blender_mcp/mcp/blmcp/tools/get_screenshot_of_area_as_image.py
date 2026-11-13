@@ -1,8 +1,3 @@
-"""[OFF_TOOL_SHOT_AREA] 官方 MCP 指定编辑器区域截图工具定义 (get_screenshot_of_area_as_image)
-- 适用 (When): 需截取 Blender 特定编辑区域（如 VIEW_3D、NODE_EDITOR）画面
-- 用法 (How) : 直接调 MCP 工具 `get_screenshot_of_area_as_image`
-- 产出 (Out) : 返回指定区域的截图 Image 对象
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

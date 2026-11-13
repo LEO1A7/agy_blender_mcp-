@@ -1,8 +1,3 @@
-"""[OFF_TOOL_SEARCH_API] 官方 MCP 关键字检索 Blender Python API 工具定义 (search_api_docs)
-- 适用 (When): 不确定精确 API 名称时按关键字搜索 `bpy` / `bmesh` 文档
-- 用法 (How) : 直接调 MCP 工具 `search_api_docs`
-- 产出 (Out) : 返回匹配的 API 条目列表
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

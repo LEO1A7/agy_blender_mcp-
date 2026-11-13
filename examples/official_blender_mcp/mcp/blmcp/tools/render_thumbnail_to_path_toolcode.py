@@ -1,8 +1,3 @@
-"""[OFF_CODE_THUMB] 官方 MCP 缩略图渲染的 Blender 端内联实现源码
-- 适用 (When): 参考官方轻量级缩略图相机/视口渲染设置与图像缩放模板
-- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
-- 产出 (Out) : 生成缩略图 PNG 并返回状态
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

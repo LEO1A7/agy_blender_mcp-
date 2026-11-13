@@ -1,8 +1,3 @@
-"""[OFF_TOOL_OBJS] 官方 MCP 场景集合与对象层级摘要工具定义 (get_objects_summary)
-- 适用 (When): 需快速获取全场景 Collection 树与对象列表（名称/类型/父级/可见性/选中状态）
-- 用法 (How) : 直接调 MCP 工具 `get_objects_summary`；实现细节见同目录 `get_objects_summary_toolcode.py`
-- 产出 (Out) : 返回场景集合树与对象状态 JSON
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

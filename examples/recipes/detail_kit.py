@@ -1,6 +1,6 @@
 """[RECIPE_DETAIL_KIT] 通用细部构件库 · 型钢截面(H/I/槽/角/管) · 百叶/板条/栏杆/窗框阵列 · 细部清单台账与细部体检
 - 适用 (When): 建筑/工业/机械外立面与结构建模需保真细部——H型钢(HEB220等)真实截面、竖向板条、倾斜百叶、栏杆立柱、窗框分格、管道法兰；或需对账“清单 vs 已建构件”防漏建
-- 用法 (How) : `import sys,os; sys.path.insert(0, os.path.expanduser('~/.gemini/config/plugins/agy-autonomous-mcp-modeling-plugin/examples/recipes')); import detail_kit as DK`；向同一个 `bm` 累积多个构件后 `DK.finalize_object(name, bm, col, materials=[...])`
+- 用法 (How) : `import sys,os; sys.path.insert(0, os.path.expanduser('~/.gemini/config/plugins/abmcp/examples/recipes')); import detail_kit as DK`；向同一个 `bm` 累积多个构件后 `DK.finalize_object(name, bm, col, materials=[...])`
 - 产出 (Out) : 法线朝外的闭合流形 BMesh 构件(单一截面棱柱而非多盒叠加)、按面分配的多材质、`ledger_check()` 漏建/弱细节报告、`detail_audit()` 盒子占位件与重复阵列统计
 """
 

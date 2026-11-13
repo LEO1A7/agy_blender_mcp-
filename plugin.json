@@ -1,12 +1,12 @@
 {
-  "name": "agy-autonomous-mcp-modeling-plugin",
+  "name": "abmcp",
   "displayName": "AGY Autonomous MCP 3D Modeling",
-  "version": "1.4.0",
-  "description": "Spec-driven autonomous 3D CAD, architectural, and hard-surface modeling in Blender via MCP. Features Building Spec JSON anchoring, rotated plan leveling & metric calibration, section slab elevation fitting, bmesh floor-cut IoU & void-solid verification, native RANDOM shading, reversible Site_Yaw delivery, true structural section profiles (HEB/IPE/louvers/slats/railings), and 5-camera + closeup visual audits.",
+  "version": "1.4.1",
+  "description": "Full official Blender Lab MCP server (all 26 tools via abmcp_mcp + blender_mcp_addon) combined with Spec-driven autonomous 3D CAD, architectural, and hard-surface modeling in Blender. Features Building Spec JSON anchoring, rotated plan leveling & metric calibration, section slab elevation fitting, bmesh floor-cut IoU verification, native RANDOM shading, structural profiles, and N-panel bridge APIs.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [
-    "根据输入的平立剖面与实景图，先运行 plan_prep 与 section_levels 转正定标并锁定 Building Spec，再按 L1/L2/L3 在 Blender 完成高精度三维建模并通过水平剖切验收",
-    "对斜置建筑平面图扫描并纠偏偏航角、建立局部正交网格，识别内天井、悬挑与错层轮廓后生成多视图、节点特写与楼层剖切叠加图",
-    "在原生 RANDOM 分色下审校当前 Blender 场景的拓扑、细部台账与各层 z+cut 水平剖切 IoU，修复偏差后执行 finish_materials 与 Site_Yaw 交付"
+    "根据输入的平立剖面与实景图，先用官方 MCP 工具与 plan_prep/section_levels 定标锁定 Building Spec，再按 L1/L2/L3 在 Blender 完成高精度三维建模并通过水平剖切验收",
+    "对斜置建筑平面图扫描纠偏并建立局部正交网格，识别内天井、悬挑与错层轮廓后生成多视图、节点特写与楼层剖切叠加图",
+    "利用官方 MCP 场景摘要、文档检索与原生 RANDOM 分色审校当前 Blender 场景的拓扑、细部台账与各层 z+cut 剖切 IoU，修复偏差后执行 finish_materials 与 Site_Yaw 交付"
   ]
 }

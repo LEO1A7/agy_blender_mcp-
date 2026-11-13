@@ -6,6 +6,7 @@
 # Code created by Siddharth Ahuja: www.github.com/ahujasid © 2025
 
 import re
+import sys
 import textwrap
 import bpy
 import mathutils
@@ -1135,6 +1136,126 @@ def _redraw_view3d_panels():
                     area.tag_redraw()
     except Exception:
         pass
+
+
+_OFFICIAL_MCP_HOOKED_MODULES = []
+_LAST_MCP_HOOK_SCAN = {"ts": 0.0}
+
+
+def _is_pause_safe_mcp_code(code, strict_json):
+    """官方 MCP 在暂停时仅放行纯只读查询/截图，拦截代码执行、视角跳转与渲染。"""
+    if not strict_json:
+        return False
+    text = str(code or "")
+    for marker in ("bpy.context.window.workspace =", "bpy.ops.view3d.view_selected(", "bpy.ops.render.render("):
+        if marker in text:
+            return False
+    return True
+
+
+def _find_official_mcp_server_modules():
+    """在 sys.modules 中查找已加载的官方 Blender MCP server 模块（跳过 bpy/bmesh）。"""
+    found = []
+    for name, mod in list(sys.modules.items()):
+        if not name or name.startswith(("bpy", "bmesh", "mathutils")):
+            continue
+        if mod is None or not callable(getattr(mod, "_execute_code", None)):
+            continue
+        mod_file = getattr(mod, "__file__", "") or ""
+        if name.endswith("mcp_to_blender_server") or mod_file.endswith("mcp_to_blender_server.py"):
+            found.append(mod)
+    return found
+
+
+def _hook_official_mcp_servers(force_scan=False):
+    """自动挂载官方 MCP（如 9875）执行入口：实时联动 N 面板「AI 正在操作」状态灯与暂停安全锁。"""
+    now = time.time()
+    # O(1) fast-path once already hooked and module instance hasn't been reloaded
+    if not force_scan and _OFFICIAL_MCP_HOOKED_MODULES:
+        all_alive = True
+        for mod in list(_OFFICIAL_MCP_HOOKED_MODULES):
+            name = getattr(mod, "__name__", "")
+            if sys.modules.get(name) is not mod or not getattr(mod, "_dshbb_mcp_hooked", False):
+                all_alive = False
+                break
+        if all_alive and (now - _LAST_MCP_HOOK_SCAN["ts"]) < 2.0:
+            return True
+
+    _LAST_MCP_HOOK_SCAN["ts"] = now
+    hooked_any = False
+    for target in _find_official_mcp_server_modules():
+        if getattr(target, "_dshbb_mcp_hooked", False):
+            if target not in _OFFICIAL_MCP_HOOKED_MODULES:
+                _OFFICIAL_MCP_HOOKED_MODULES.append(target)
+            hooked_any = True
+            continue
+        orig_execute_code = getattr(target, "_execute_code", None)
+        if not callable(orig_execute_code):
+            continue
+
+        def _instrumented_execute_code(code, strict_json, _orig=orig_execute_code, _target=target):
+            if _ai_paused() and not _is_pause_safe_mcp_code(code, strict_json):
+                res_cls = getattr(_target, "_ExecResult", None)
+                err_dict = {
+                    "status": "error",
+                    "error": "AI_PAUSED",
+                    "message": "AI 操作已暂停：请在 Blender N 面板「活动状态」里点「继续 AI 操作」",
+                }
+                return res_cls(err_dict) if res_cls else err_dict
+
+            recorder = get_edit_recorder()
+            tracker = get_activity_tracker()
+            _LAST_UI_STATE_KEY["key"] = None
+            _redraw_view3d_panels()
+            try:
+                with recorder.agent_command():
+                    exec_result = _orig(code, strict_json)
+            finally:
+                tracker.note_agent_end()
+                tracker._resync()
+                _LAST_UI_STATE_KEY["key"] = None
+                _redraw_view3d_panels()
+
+            check_fn = getattr(exec_result, "check_fn", None)
+            if check_fn is not None and callable(check_fn) and hasattr(exec_result, "_replace"):
+                def _tracked_check_fn(_fn=check_fn, _rec=recorder, _trk=tracker):
+                    try:
+                        with _rec.agent_command():
+                            return _fn()
+                    finally:
+                        _trk.note_agent_end()
+                        _trk._resync()
+                        _LAST_UI_STATE_KEY["key"] = None
+                        _redraw_view3d_panels()
+
+                exec_result = exec_result._replace(check_fn=_tracked_check_fn)
+            return exec_result
+
+        _instrumented_execute_code.__name__ = getattr(orig_execute_code, "__name__", "_execute_code")
+        _instrumented_execute_code.__doc__ = getattr(orig_execute_code, "__doc__", None)
+        target._dshbb_orig_execute_code = orig_execute_code
+        target._execute_code = _instrumented_execute_code
+        target._dshbb_mcp_hooked = True
+        if target not in _OFFICIAL_MCP_HOOKED_MODULES:
+            _OFFICIAL_MCP_HOOKED_MODULES.append(target)
+        hooked_any = True
+    return hooked_any
+
+
+def _unhook_official_mcp_servers():
+    """插件卸载时还原官方 MCP server 的原始 _execute_code。"""
+    for target in list(_OFFICIAL_MCP_HOOKED_MODULES):
+        try:
+            orig = getattr(target, "_dshbb_orig_execute_code", None)
+            if callable(orig) and getattr(target, "_dshbb_mcp_hooked", False):
+                target._execute_code = orig
+            if hasattr(target, "_dshbb_mcp_hooked"):
+                delattr(target, "_dshbb_mcp_hooked")
+            if hasattr(target, "_dshbb_orig_execute_code"):
+                delattr(target, "_dshbb_orig_execute_code")
+        except Exception:
+            pass
+    _OFFICIAL_MCP_HOOKED_MODULES.clear()
 
 
 _LAST_UI_STATE_KEY = {"key": None}
@@ -6605,7 +6726,11 @@ def _on_show_collection_list_update(self, context):
 
 
 def _dshbb_ui_list_timer():
-    """列表打开时保持内容与场景同步；活动状态/暂停状态变化时重绘 N 面板。"""
+    """列表打开时保持内容与场景同步；活动状态/暂停状态变化时重绘 N 面板，并保持官方 MCP 状态挂钩。"""
+    try:
+        _hook_official_mcp_servers()
+    except Exception:
+        pass
     try:
         scene = bpy.context.scene
         if scene is not None:
@@ -6614,7 +6739,7 @@ def _dshbb_ui_list_timer():
             if getattr(scene, "dshbb_show_collection_list", False):
                 _refresh_collection_list(scene)
             try:
-                snap = get_activity_tracker().snapshot(include_current_command=False)
+                snap = get_activity_tracker().snapshot(include_current_command=True)
                 key = (snap.get("state"), bool(getattr(scene, "dshbb_ai_paused", False)))
                 if key != _LAST_UI_STATE_KEY["key"]:
                     _LAST_UI_STATE_KEY["key"] = key
@@ -6705,7 +6830,7 @@ class DSHBB_PT_Panel(bpy.types.Panel):
         layout.separator()
         act_box = layout.box()
         try:
-            activity = get_activity_tracker().snapshot(include_current_command=False)
+            activity = get_activity_tracker().snapshot(include_current_command=True)
         except Exception:
             activity = {}
         state = str(activity.get("state") or "idle")
@@ -7481,10 +7606,18 @@ def register():
     # Add-on registration can run before Blender has a stable UI/scene context.
     # Defer socket startup and retry after startup-file or .blend loads.
     _dshbb_register_auto_start()
+    try:
+        _hook_official_mcp_servers(force_scan=True)
+    except Exception:
+        pass
 
     print("DSH Blender Bridge addon registered")
 
 def unregister():
+    try:
+        _unhook_official_mcp_servers()
+    except Exception:
+        pass
     try:
         bpy.app.timers.unregister(_dshbb_ui_list_timer)
     except Exception:

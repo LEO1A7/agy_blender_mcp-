@@ -1,8 +1,3 @@
-"""[OFF_TOOL_DB_SUM] 官方 MCP 场景数据块统计摘要工具定义 (get_blendfile_summary_datablocks)
-- 适用 (When): 需快速统计当前 `.blend` 中各类 datablock（meshes, materials, collections 等）数量
-- 用法 (How) : 直接调 MCP 工具 `get_blendfile_summary_datablocks`
-- 产出 (Out) : 返回非空数据块计数、当前工作区与渲染引擎名称
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

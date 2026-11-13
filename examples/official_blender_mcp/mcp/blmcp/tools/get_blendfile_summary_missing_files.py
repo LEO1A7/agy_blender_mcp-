@@ -1,8 +1,3 @@
-"""[OFF_TOOL_MISSING] 官方 MCP 缺失外部文件检查工具定义 (get_blendfile_summary_missing_files)
-- 适用 (When): 排查贴图、缓存或链接库是否存在路径丢失
-- 用法 (How) : 直接调 MCP 工具 `get_blendfile_summary_missing_files`
-- 产出 (Out) : 返回缺失外部文件路径列表
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

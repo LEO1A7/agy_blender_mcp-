@@ -1,8 +1,3 @@
-"""[OFF_TOOL_THUMB] 官方 MCP 缩略图快速渲染工具定义 (render_thumbnail_to_path)
-- 适用 (When): 需快速生成场景低开销预览缩略图
-- 用法 (How) : 直接调 MCP 工具 `render_thumbnail_to_path`；底层源码见 `render_thumbnail_to_path_toolcode.py`
-- 产出 (Out) : 输出缩略图文件并返回路径信息
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

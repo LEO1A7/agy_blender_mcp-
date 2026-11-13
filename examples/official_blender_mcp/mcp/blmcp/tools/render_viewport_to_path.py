@@ -1,8 +1,3 @@
-"""[OFF_TOOL_RENDER_VP] 官方 MCP 视口渲染落盘工具定义 (render_viewport_to_path)
-- 适用 (When): 需将当前 3D 视口或相机视角渲染并保存为指定路径图像并自动缩放至尺寸上限
-- 用法 (How) : 直接调 MCP 工具 `render_viewport_to_path`；底层实现见 `render_viewport_to_path_toolcode.py`
-- 产出 (Out) : 在目标路径生成渲染图像文件并返回状态字典
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

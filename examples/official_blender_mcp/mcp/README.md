@@ -1,8 +1,3 @@
-"""[OFF_MCP_SERVER_DOC] Blender 官方 MCP Server (blmcp) 服务端说明文档
-- 适用 (When): 了解官方 FastMCP 服务端包结构与启动参数
-- 用法 (How) : 按需 `read_file` 查阅（只读官方文档）
-- 产出 (Out) : 说明 blmcp 服务端模块入口与运行依赖
-"""
 # Blender MCPB Extension
 
 ## Description

@@ -1,8 +1,3 @@
-"""[OFF_TOOL_API_DOCS] 官方 MCP 精确获取 Blender Python API 文档工具定义 (get_python_api_docs)
-- 适用 (When): 需查询 `bpy` / `bmesh` / `mathutils` 特定模块或类的官方 RST 文档
-- 用法 (How) : 直接调 MCP 工具 `get_python_api_docs`
-- 产出 (Out) : 返回对应 API 的结构化文档段落
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

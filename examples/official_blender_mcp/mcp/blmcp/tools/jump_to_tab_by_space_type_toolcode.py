@@ -1,8 +1,3 @@
-"""[OFF_CODE_JUMP_SPACE] 官方 MCP 按编辑器类型检索并切换工作区的 Blender 端源码
-- 适用 (When): 参考如何扫描 `bpy.data.workspaces` 寻找指定 `space.type`
-- 用法 (How) : 按需读取 `main()` 实现（原文件只读）
-- 产出 (Out) : 返回匹配并激活的工作区
-"""
 # SPDX-FileCopyrightText: 2026 Blender Authors
 #
 # SPDX-License-Identifier: GPL-3.0-or-later

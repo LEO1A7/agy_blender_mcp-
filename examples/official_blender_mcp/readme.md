@@ -1,8 +1,3 @@
-"""[OFF_README] Blender 官方 MCP 仓库总览与双端架构指南
-- 适用 (When): 了解官方 Blender MCP 扩展与 MCP Server 的通信架构、安装及 CLI 用法
-- 用法 (How) : 按需阅读 `head -n 6` 或 `read_file` 查看架构说明（只读官方指南）
-- 产出 (Out) : 提供官方 MCP Client <-> blender-mcp <-> Blender Add-on 完整拓扑说明
-"""
 # Blender MCP
 
 ## Overview
