@@ -375,42 +375,56 @@ def add_louver_leaf(bm, origin, run, normal, width, height, blades=24, blade_dep
 def add_railing(bm, path, height=1.0, post_pitch=1.2, post_size=0.04, rail_size=0.04, mid_rails=3,
                 baluster_pitch=None, baluster_size=0.012, kick_h=0.0, closed=False, mat=0):
     """Guard-rail along a 3D `path` (points on the walking surface): posts at vertices + every ~post_pitch,
-    top handrail, `mid_rails` horizontal bars (or vertical balusters if baluster_pitch), optional kick plate."""
+    top handrail, `mid_rails` horizontal bars (or vertical balusters if baluster_pitch), optional kick plate.
+    Bars span cleanly between post faces so the railing has 0 self-overlap."""
     pts = [Vector(p) for p in path]
     segs = list(zip(pts, pts[1:] + ([pts[0]] if closed else [])))
-    h = Vector((0, 0, height))
+    top_z = height - rail_size * 0.5
     posts = []
+    bays = []
     for a, b in segs:
         d = b - a
+        if d.length < 1e-6:
+            continue
         n_div = max(1, int(round(d.length / post_pitch)))
         for k in range(n_div):
-            posts.append(a + d * (k / n_div))
-    posts.append(segs[-1][1] if not closed else segs[0][0])
+            p0 = a + d * (k / n_div)
+            p1 = a + d * ((k + 1) / n_div)
+            posts.append(p0)
+            bays.append((p0, p1))
+    if segs and not closed:
+        posts.append(segs[-1][1])
     seen = []
     for p in posts:
         if any((p - q).length < 1e-4 for q in seen):
             continue
         seen.append(p)
         add_box(bm, p + Vector((0, 0, height / 2)), (post_size, post_size, height), mat=mat)
-    for a, b in segs:
-        d = b - a
-        if d.length < 1e-6:
+    for pa, pb in bays:
+        d = pb - pa
+        if d.length <= post_size + 1e-4:
             continue
         dn = d.normalized()
-        add_prism(bm, profile_rect(rail_size, rail_size), a + h, b + h, up=Z_UP, extend=(post_size / 2, post_size / 2), mat=mat)
+        s_a = pa + dn * (post_size * 0.5)
+        s_b = pb - dn * (post_size * 0.5)
+        span_len = (s_b - s_a).length
+        add_prism(bm, profile_rect(rail_size, rail_size),
+                  s_a + Vector((0, 0, top_z)), s_b + Vector((0, 0, top_z)), up=Z_UP, mat=mat)
         if baluster_pitch:
             s = baluster_pitch
-            while s < d.length - 1e-6:
-                q = a + dn * s
-                add_box(bm, q + Vector((0, 0, height / 2)), (baluster_size, baluster_size, height - rail_size), mat=mat)
+            bal_h = max(0.01, height - rail_size)
+            while s < span_len - 1e-6:
+                q = s_a + dn * s
+                add_box(bm, q + Vector((0, 0, bal_h / 2)), (baluster_size, baluster_size, bal_h), mat=mat)
                 s += baluster_pitch
         else:
             for i in range(mid_rails):
                 zc = height * (i + 1) / (mid_rails + 1)
-                add_prism(bm, profile_rect(rail_size * 0.5, rail_size * 0.5), a + Vector((0, 0, zc)),
-                          b + Vector((0, 0, zc)), mat=mat)
+                add_prism(bm, profile_rect(rail_size * 0.5, rail_size * 0.5),
+                          s_a + Vector((0, 0, zc)), s_b + Vector((0, 0, zc)), mat=mat)
         if kick_h > 0:
-            add_prism(bm, profile_rect(0.012, kick_h), a + Vector((0, 0, kick_h / 2)), b + Vector((0, 0, kick_h / 2)), mat=mat)
+            add_prism(bm, profile_rect(0.012, kick_h),
+                      s_a + Vector((0, 0, kick_h / 2)), s_b + Vector((0, 0, kick_h / 2)), mat=mat)
 
 
 def add_window(bm, origin, run, normal, width, height, frame=0.06, depth=0.08, panes=(2, 1), bar=0.04,
@@ -430,7 +444,11 @@ def add_window(bm, origin, run, normal, width, height, frame=0.06, depth=0.08, p
         ob(x - bar / 2, x + bar / 2, frame, height - frame)
     for r in range(1, rows):
         z = frame + inner_h * r / rows
-        ob(frame, width - frame, z - bar / 2, z + bar / 2)
+        for c in range(cols):
+            a0 = frame + inner_w * c / cols + (bar / 2 if c > 0 else 0)
+            a1 = frame + inner_w * (c + 1) / cols - (bar / 2 if c < cols - 1 else 0)
+            if a1 - a0 > 1e-4:
+                ob(a0, a1, z - bar / 2, z + bar / 2)
     for c in range(cols):
         for r in range(rows):
             a0 = frame + inner_w * c / cols + (bar / 2 if c > 0 else 0)
@@ -453,14 +471,22 @@ def _auto_bevel_width(bm, cap=0.006):
     return w if w >= 0.0005 else 0.0
 
 
-def finalize_object(name, bm, col, materials=None, bevel="auto", smooth=False, group=None, merge_dist=0.0):
-    """BMesh -> object in `col` (replaces same-name object). materials: list of bpy Materials mapped to
-    face.material_index. bevel='auto' | metres | 0. merge_dist>0 welds coincident verts (off by default:
-    welding touching solids would create non-manifold edges). `group` is ignored (RANDOM shading is used). Frees `bm`."""
+def finalize_object(name, bm, col, materials=None, bevel="auto", smooth=False, group=None, merge_dist=0.0, archive_existing=True):
+    """BMesh -> object in `col` (archives any existing same-name object as `__hide_r<N>__<name>` when `archive_existing=True`).
+    materials: list of bpy Materials mapped to face.material_index. bevel='auto' | metres | 0.
+    merge_dist>0 welds coincident verts (off by default). `group` is ignored (RANDOM shading is used). Frees `bm`."""
     _ = group  # deprecated: RANDOM shading does not use per-object color groups
     old = bpy.data.objects.get(name)
     if old:
-        bpy.data.objects.remove(old, do_unlink=True)
+        if archive_existing and not name.startswith("_"):
+            import os as _os, sys as _sys
+            _d = _os.path.dirname(_os.path.abspath(__file__))
+            if _d not in _sys.path:
+                _sys.path.insert(0, _d)
+            import cad_operator_recipes as _COR
+            _COR.hide_defective_components([name], reason="finalize_object_regen")
+        else:
+            bpy.data.objects.remove(old, do_unlink=True)
     if merge_dist:
         bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=merge_dist)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
@@ -516,11 +542,11 @@ def _is_primitive_box(obj):
 
 
 def ledger_check(scene=None):
-    """Compare the registered inventory with live objects. Returns per-tier coverage plus
+    """Compare the registered inventory with live active objects. Returns per-tier coverage plus
     `missing` (no matching object) and `weak` (too few verts / box standing in for a section member)."""
     scene = scene or bpy.context.scene
     items = ledger_get()
-    objs = [o for o in scene.objects if o.type == 'MESH']
+    objs = [o for o in scene.objects if o.type == 'MESH' and not o.hide_viewport and not o.hide_render and not o.name.startswith(("__hide_r", "__wip__", "BBOX_"))]
     rows, missing, weak = [], [], []
     tier_total, tier_ok = {}, {}
     for it in items:
@@ -572,7 +598,7 @@ def detail_audit(scene=None, big_box_min_dim=0.4, whitelist=()):
     scene = scene or bpy.context.scene
     extra = json.loads(scene.get("detail_audit_whitelist", "[]")) if scene.get("detail_audit_whitelist") else []
     patterns = tuple(_DEFAULT_AUDIT_WHITELIST) + tuple(whitelist or ()) + tuple(extra)
-    meshes = [o for o in scene.objects if o.type == 'MESH']
+    meshes = [o for o in scene.objects if o.type == 'MESH' and not o.hide_viewport and not o.hide_render and not o.name.startswith(("__hide_r", "__wip__", "BBOX_"))]
     stand, big = [], []
     fam = {}
     tris = 0

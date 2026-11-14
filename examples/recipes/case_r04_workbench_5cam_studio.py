@@ -1,7 +1,7 @@
-"""[CASE_R04] Stage 4 统一 5 机位 Workbench Cavity+Outline 摄影棚 (1:1 正交三视图 + 自动锁距双等轴测 + 局部特写)
-- 适用 (When): Stage 4 视口视觉核验，需一键架设三点太阳光、Workbench Cavity+Outline 浅灰底渲染、5 机位(支持载具与建筑北上平面双约定)及节点特写
-- 用法 (How) : 在 `execute_blender_code` 中 `from case_r04_workbench_5cam_studio import setup_workbench_studio_and_cameras, render_views, render_closeup`
-- 产出 (Out) : 返回 `{"Cam_Side_Left", "Cam_Top", "Cam_Front", "Cam_Iso", "Cam_Iso_Rear"}` 相机字典，并支持 `render_views` 与 `render_closeup`
+"""[CASE_R04] P4 两阶段 VLM 视觉验收摄影棚 (第1轮 Workbench 着色截图 + 第2轮 EEVEE 实际光照渲染)
+- 适用 (When): P4 视觉核验：第1轮用着色模式截图(`r1_shaded`)检查几何，通过后第2轮用实际光照渲染(`r2_lit`)验收材质/光影/开口
+- 用法 (How) : `from case_r04_workbench_5cam_studio import setup_workbench_studio_and_cameras, setup_lit_studio, render_views, render_lit_views, render_vlm_verification_views, render_closeup`
+- 产出 (Out) : 返回 5/9 机位相机字典，及 `r1_shaded_*.png`（着色截图）与 `r2_lit_*.png`（EEVEE 实光渲染）
 """
 
 import os
@@ -16,7 +16,10 @@ from cad_operator_recipes import (  # noqa: E402,F401
     scene_bounds,
     compute_or_lock_iso_distance,
     setup_workbench_studio_and_cameras,
+    setup_lit_studio,
     describe_studio,
     render_views,
+    render_lit_views,
+    render_vlm_verification_views,
     render_closeup,
 )

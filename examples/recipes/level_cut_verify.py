@@ -41,13 +41,18 @@ def _world_z_span(obj, inv_yaw):
 
 
 def _should_ignore(obj, ignore_prefixes):
-    if obj.type != 'MESH' or obj.hide_viewport:
+    if obj.type != 'MESH' or obj.hide_viewport or obj.hide_render:
+        return True
+    if obj.name.startswith(("__hide_r", "__wip__", "_tmp_")):
         return True
     for p in ignore_prefixes:
         base = p.rstrip("*")
         if obj.name.startswith(base):
             return True
-    for c in obj.users_collection:
+    cols = list(obj.users_collection)
+    if cols and all(c.name.endswith("_WIP") or c.name.startswith(("__hide_r", "__wip__")) for c in cols):
+        return True
+    for c in cols:
         for p in ignore_prefixes:
             base = p.rstrip("*")
             if c.name.startswith(base):
@@ -101,7 +106,7 @@ def _is_solid_struct_name(name: str) -> bool:
     return not any(tok in low for tok in _THIN_OR_SKIN_TOKENS)
 
 
-def export_level_cuts(out_json=None, levels=None, ignore=("Studio", "Cam_*", "BBOX_*", "Site_Yaw"), spec=None):
+def export_level_cuts(out_json=None, levels=None, ignore=("Studio", "Cam_*", "BBOX_*", "Site_Yaw", "__hide_r*", "__wip*"), spec=None):
     """Slice scene geometry at each level's `z + cut` (auto-shifting +/-0.12m if within 0.08m of a horizontal face)
     and write segments grouped per object to `level_cuts.json`.
     """
@@ -689,6 +694,10 @@ def verify_levels(cuts_json=None, spec=None, tol_mm=150, iou_min=0.90, px_mm=20)
                 lines.append(f"    [{p['kind']}] {p['area_m2']}m2 {p['hint']}")
             for v in violations[:2]:
                 lines.append(f"    [RULE] {v}")
+
+    if not reports:
+        all_passed = False
+        lines.append("  (FAIL: no levels with valid outlines found in spec)")
 
     # Persist summary into spec
     try:

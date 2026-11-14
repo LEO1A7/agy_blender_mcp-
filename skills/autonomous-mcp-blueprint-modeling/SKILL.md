@@ -14,7 +14,7 @@ description: Autonomous 3D CAD, architectural, and hard-surface modeling in Blen
 ### P0 资产盘点与 Spec 初始化
 - **场景与工程摸底（优先官方只读工具）**：操作现有场景或 `.blend` 前，先调 `get_blendfile_summary_path_info`、`get_blendfile_summary_datablocks`、`get_objects_summary`（离线文件用对应 `*_for_cli` 与 `get_blendfile_summary_missing_files_for_cli` / `get_blendfile_summary_of_linked_libraries_for_cli` / `get_blendfile_summary_usage_guess_for_cli`）确认单位、层级与资产状态。
 - 分类输入图：**建筑平/立/剖 + 实景照片**走建筑通道（`plan_prep` + `spec_kit`）；**载具/机械/单体**跳至文末非建筑通道。
-- 初始化 Spec：在本地/Blender 执行 `from spec_kit import *; spec_init(src="...")`。
+- **初始化 Spec**：在本地/Blender 执行 `from spec_kit import *; spec_init(src="...")`（后续 `spec_validate()` / `verify_levels()` 可省略 `spec` 参数直接读取最新持久化真源）。
 
 ### P1 定偏航 · 定比例 · 抓标高（**Gate G1**）
 1. **斜置平面检出偏航**：
@@ -33,21 +33,23 @@ description: Autonomous 3D CAD, architectural, and hard-surface modeling in Blen
 - 用矩形并差 DSL 写入每层 `outline.<Lx>`（`union/add/sub` 或 `base+add+sub`），写入 `edge_rules`（`SOLID|GLAZED|OPEN|CANTILEVER|RECESS|STEP|LOUVER|SLAT`）及 `elements` 细部台账（`HEB220`、格栅、百叶、栏杆）。
 - **Gate G2**：跑 `python3 $P/bin/plan_prep.py check-outline --meta $W/plan_meta.json --spec $W/building_spec.json --level L0` 校验边界支撑，并通过 `spec_validate()`。
 
-### P3 分段建模 L1→L2→L3 与数值剖切门禁（**Gate G3**）
+### P3 分段建模 L1→L2→L3 · 拓扑重叠纠偏与数值剖切门禁（**Gate G3**）
 1. **API 查阅与场景初始化**：查未知 `bpy`/`bmesh` 签名先用 `get_python_api_docs` / `search_api_docs` / `search_manual_docs`。通过 `execute_blender_code` 开启原生 `RANDOM` 分色：`COR.setup_clean_scene()` + `COR.set_shading_color_mode('RANDOM')`。
 2. **L1 宏观楼板与外围护**（在正交局部系建，保持 `Site_Yaw=0`）：
    调用 `CASE_R10` (`facade_kit.py`)：`build_all_levels()` 或逐层 `build_level_slab` + `build_envelope` + `add_cantilever`。
 3. **L2/L3 真实型材与细部五金**：
    用 `CASE_R08` (`detail_kit.py`) 构造真实截面的 `add_steel_member("HEB220",...)`、`add_slat_array`、`add_louver_leaf`、`add_railing`、`add_window` 与檐口法兰，并运行 `DK.detail_audit()` + `DK.ledger_check()` 确认零 6 面方块冒充。检查单件属性优先 `get_object_detail_summary`，聚焦检查用 `jump_to_view3d_object_by_name` / `jump_to_view3d_object_data_by_name`。
-4. **Gate G3（真几何水平剖切先行）**：
+4. **拓扑自交 & 跨构件重叠穿模自动检测与原位重生成**：
+   运行 `COR.audit_scene_meshes(check_clashes=True)` 或一键闭环 `COR.audit_and_regenerate()`（`CASE_R02`/`CASE_R05`），通过 `BVHTree` 自动检出非流形、零面空壳、自交及实体穿模/重复/包埋 (`audit_scene_clashes`)，自动将不良构件隐藏为 `__hide_r<N>__<名>` 并在原位重生成（多余重复/完全包埋件保持隐藏归档进 `archived_redundant` 不留空壳；缺失核心件在 `needs_builder` 返回需传 `builder_fn`）后复验至 0 缺陷。
+5. **Gate G3（真几何水平剖切先行）**：
    调用 `CASE_R11`：`LCV.export_level_cuts()` → `res = LCV.verify_levels(tol_mm=150, iou_min=0.90)`。
    - **仅在失败层或终验确认时**渲染叠加图定损：
      `python3 $P/bin/level_plan_render.py --cuts $W/level_cuts.json --spec $W/building_spec.json --level L1 --plan $W/plan_rot.png --meta $W/plan_meta.json --verify $W/verify_L1.json --out $W/overlay_L1.png`
-   - 发现问题后用 `CASE_R05` (`transform_component` / `replace_component_geometry`) 修复并重跑 `verify_levels` 直至全部 `PASS`。
+   - **任何验收发现不对时的统一纠偏法则（对全流程所有验收均有效）**：严禁在原不良构件上局部打补丁，必须先 `hide_defective_components(...)` 隐藏不良件为 `__hide_r<N>__`，再 `regenerate_component_in_place(...)` 原位重新生成新构件并重跑对应验收（`audit_and_regenerate` / `verify_levels` / VLM 复审）。
 
-### P4 多视图与节点微距视觉核验（**Gate G4**）
-- 视口快览与工作区检查：可用 `jump_to_tab_by_name` / `jump_to_tab_by_space_type`、`get_screenshot_of_area_as_image`、`get_screenshot_of_window_as_image`、`get_screenshot_of_window_as_json`、`render_thumbnail_to_path`、`render_viewport_to_path`。
-- 全景五机位 + 节点特写：调用 `CASE_R04` (`setup_workbench_studio_and_cameras(convention="plan_north_up", diagnostic_colors="RANDOM")`) 渲染多视图与 `render_closeup`，用 `bin/compose_triview_sheet.py` 拼图送入 `read_file` 审查；若修改构造须 `spec_patch()` + `spec_note()` 回写 Spec 并重过 `G3`。
+### P4 两轮 VLM 视觉验收与节点微距核验（**Gate G4**）
+- **第 1 轮（着色模式模型截图验收）**：先用 `CASE_R04` (`setup_workbench_studio_and_cameras(convention="plan_north_up", diagnostic_colors="RANDOM")`) 配合 `render_vlm_verification_views(..., round_stage="r1_shaded")`（或 `get_screenshot_of_area_as_image` / `render_closeup` + `bin/compose_triview_sheet.py`）送入 `read_file` 做几何/轮廓/穿插初审；发现异常统一按“隐藏不良件 `__hide_r<N>__` + 原位重生成 + 重过第 1 轮”闭环。
+- **第 2 轮（第 1 轮通过后再用带实际光照的渲染图验收）**：第 1 轮全部通过后，调用 `render_vlm_verification_views(..., round_stage="r2_lit")` / `render_lit_views()`（`BLENDER_EEVEE` 侧逆日光三点布光 + 天空环境光 + PBR 材质，并将 3D 视口切为 `RENDERED`；若用官方 `render_viewport_to_path` 则以返回值 `filepath` 送入 `read_file`）验收材质、阴影与通透关系；若发现不对同样隐藏原件并在原位重生成后双轮复验，同时 `spec_patch()` + `spec_note()` 回写 Spec 并重过 `G3`。
 
 ### P5 材质赋予 · 现场偏航 · 交付（**Gate G5**）
 1. `COR.finish_materials({"*Wall*": ..., "*Slab*": ...})` 赋予 PBR 材质并自动切换 `shading.color_type = 'MATERIAL'`；
@@ -88,7 +90,7 @@ FK.build_all_levels(wall_t=0.28)
 # P3: 添加外挑 L1 真实 HEB220 柱并校验 G3
 bm = bmesh.new(); [DK.add_steel_member(bm, "HEB220", (x, y, 0.04), (x, y, 2.92)) for x, y in [(16.5,2.5),(16.5,7.5)]]
 DK.finalize_object("HEB220_Cols", bm, COR.get_or_create_collection("L2_Envelope_Detail"))
-assert COR.audit_scene_meshes()["passed"] and DK.detail_audit()["passed"]
+assert COR.audit_and_regenerate()["passed"] and DK.detail_audit()["passed"]
 print(LCV.verify_levels(tol_mm=150, iou_min=0.90)["report"])
-# P4-P5: render_views/closeup -> finish_materials(...) -> SK.apply_site_yaw()
+# P4-P5: r1_shaded -> r2_lit 两轮VLM验收 -> finish_materials(...) -> SK.apply_site_yaw()
 ```

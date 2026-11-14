@@ -1,10 +1,10 @@
-# AGY Autonomous MCP 3D Modeling Plugin (`abmcp` · `agy-autonomous-mcp-modeling-plugin` v1.4.1)
+# AGY Autonomous MCP 3D Modeling Plugin (`abmcp` · `agy-autonomous-mcp-modeling-plugin` v1.4.2)
 
 > **设计理念**：完整集成 **Blender 官方 Lab MCP 全部 26 项原生能力 (`abmcp_mcp`)** 与 **Spec 驱动自主 CAD/建筑建模流水线**。通过插件自带隔离 `.venv` 与 `mcp_config.json`（短名 `abmcp` + 服务键 `mcp` → `abmcp_mcp`，全部 26 个工具标识符严格 `<= 63` 字符）直接提供官方 MCP 服务端与双扩展 `addon/blender_mcp_addon/` + `addon/agy_blender_bridge.py`；并以 `./agy_work/building_spec.json` 锚定全局坐标，通过 CLI 工具卸载几何算术、原生 `RANDOM` 着色 + `bmesh` 水平剖切验收实现高保真三维建模。
 
 ---
 
-## 1. v1.4.1 核心集成与能力
+## 1. v1.4.2 核心集成与能力
 
 1. **完整官方 Blender Lab MCP 服务 (`abmcp_mcp`，26 工具全覆盖)**：
    - 插件根目录直接通过 `mcp_config.json` 启动本地隔离 `.venv/bin/blender-mcp`，将官方上游 `examples/official_blender_mcp/`（`dbbf836` 原版未改动）全部 26 项工具注入 Antigravity（端口默认 `BLENDER_MCP_PORT=9875`，与默认 `9876` 的 N 面板插件隔离共存）：
@@ -23,9 +23,9 @@
 4. **Spec 驱动多孔流形楼板与免布尔板块外墙 (`CASE_R10` `facade_kit.py` + `CASE_R08` `detail_kit.py`)**：
    - 建模全程在局部正交系（`Site_Yaw = 0°`）分段按 **L1 体块 ➔ L2 型材/表皮 ➔ L3 五金收口** 推进，P5 交付时再通过 `apply_site_yaw()` 挂载可逆偏航空物体；
    - 结构钢柱/梁（`HEB220`/`HEA`/`IPE`/方管）、菱形格栅、倾斜百叶扇、栏杆与窗框均构建真实闭合截面。
-5. **Blender 原生 `RANDOM` 分色 + `bmesh` 真几何楼层剖切验收 (`CASE_R11` + `bin/level_plan_render.py`)**：
-   - 建模与几何核验期保持 Blender 原生 `shading.color_type = 'RANDOM'` + 对象轮廓线，P5 赋材后调用 `finish_materials()` 自动切至 `'MATERIAL'`；
-   - 用 `bmesh.ops.bisect_plane` 沿每层 `z + cut` 真几何剖切，计算包络 IoU（`>=0.90`）、外墙偏移误差（`<=150mm`）与虚实 rule 覆盖率。
+5. **Blender 原生 `RANDOM` 分色 + `bmesh` 真几何楼层剖切 + 重叠穿模自动隐藏重生成 + 两轮 VLM 视觉验收 (`CASE_R02/R04/R05/R11`)**：
+   - 建模与初验保持 Blender 原生 `shading.color_type = 'RANDOM'` + 轮廓线；`audit_scene_meshes(check_clashes=True)` / `audit_and_regenerate()` 自动检出非流形、自交及跨构件重叠穿模并隐藏不良件 (`__hide_r<N>__`) 原位重生成；
+   - 全流程任何验收发现问题统一执行“隐藏不良构件 + 原位重新生成 + 重新验收”；P4 视觉验收先跑第 1 轮着色模式截图 (`r1_shaded`)，通过后再跑第 2 轮 `BLENDER_EEVEE` 实际光照渲染 (`r2_lit`) 复验一轮。
 
 ---
 
@@ -48,7 +48,7 @@
 
 ```text
 agy-autonomous-mcp-modeling-plugin/   (symlink ~/.gemini/config/plugins/abmcp)
-├── plugin.json                                           # Antigravity 插件清单 (name: "abmcp", v1.4.1)
+├── plugin.json                                           # Antigravity 插件清单 (name: "abmcp", v1.4.2)
 ├── mcp_config.json                                       # 本地隔离 .venv 官方 blender-mcp 服务注册 (abmcp_mcp)
 ├── .venv/                                                # 隔离 Python 环境 (.venv/bin/blender-mcp)
 ├── README.md                                             # 架构说明与安装指南（本文件）

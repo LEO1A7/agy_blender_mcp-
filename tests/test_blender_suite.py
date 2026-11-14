@@ -339,6 +339,187 @@ def test_benchmark_3000_objects(work_dir):
     print(f"[PASS] test_benchmark_3000_objects: {dt:.3f}s (< 3.0s)")
 
 
+def test_clash_and_topology_auto_hide_regen(work_dir):
+    _reset_scene()
+    import case_r06_final_delivery_grouping as R6
+
+    # 1. Verify DetailKit railing & COR track loop builders have zero self-overlap
+    col_clean = COR.get_or_create_collection("Struct_Frame")
+    bm_rail = bmesh.new()
+    DK.add_railing(bm_rail, [(0.0, 0.0, 0.0), (2.4, 0.0, 0.0), (2.4, 1.2, 0.0)], closed=False, kick_h=0.1)
+    COR.create_mesh_object("Struct_Railing", bm_rail, col_clean, bevel_width=0.0)
+
+    pts_yz = [(0.0, 0.2), (1.5, 0.2), (2.0, 0.6), (1.8, 0.9), (0.2, 0.9), (-0.3, 0.6)]
+    bm_trk = COR.build_contoured_track_loop(pts_yz, x_center=5.0, loop_interior_yz=(0.85, 0.55), add_grousers=True)
+    COR.create_mesh_object("Mech_Track", bm_trk, col_clean, bevel_width=0.0)
+
+    bm_win22 = bmesh.new()
+    DK.add_window(bm_win22, (8.0, 0.0, 0.0), (1.0, 0.0, 0.0), (0.0, -1.0, 0.0), 2.0, 1.6, panes=(2, 2))
+    COR.create_mesh_object("Window_2x2", bm_win22, col_clean, bevel_width=0.0)
+
+    audit_clean = COR.audit_scene_meshes(expected_names=["Struct_Railing", "Mech_Track", "Window_2x2"], check_clashes=True)
+    assert audit_clean["passed"], f"Expected clean builders with 0 clashes, got: {audit_clean}"
+    assert audit_clean["clash_count"] == 0, f"Unexpected clashes in clean builders: {audit_clean['clashes']}"
+
+    # 2. Flush boundary contact = NO false positive; injected penetration + bad topology = FAIL -> auto-hide + regen
+    _reset_scene()
+    col = COR.get_or_create_collection("L0_Struct")
+
+    bm_slab = bmesh.new()
+    bmesh.ops.create_cube(bm_slab, size=1.0)
+    bmesh.ops.scale(bm_slab, vec=(6.0, 4.0, 0.30), verts=bm_slab.verts)
+    bmesh.ops.translate(bm_slab, vec=(3.0, 2.0, -0.15), verts=bm_slab.verts)
+    COR.create_mesh_object("L0_Slab", bm_slab, col, bevel_width=0.0)
+
+    bm_wall = bmesh.new()
+    bmesh.ops.create_cube(bm_wall, size=1.0)
+    bmesh.ops.scale(bm_wall, vec=(4.0, 0.20, 2.60), verts=bm_wall.verts)
+    bmesh.ops.translate(bm_wall, vec=(3.0, 0.10, 1.30), verts=bm_wall.verts)  # bottom z=0.0 flush on L0_Slab top
+    COR.create_mesh_object("L0_Wall_Clean", bm_wall, col, bevel_width=0.0)
+
+    flush_audit = COR.audit_scene_meshes(expected_names=["L0_Slab", "L0_Wall_Clean"], check_clashes=True)
+    assert flush_audit["passed"] and flush_audit["clash_count"] == 0, f"Flush contact false positive: {flush_audit}"
+
+    # Inject penetrating column (z in [-0.20, 2.60] cuts 0.20m into L0_Slab)
+    bm_col = bmesh.new()
+    bmesh.ops.create_cube(bm_col, size=1.0)
+    bmesh.ops.scale(bm_col, vec=(0.40, 0.40, 2.80), verts=bm_col.verts)
+    bmesh.ops.translate(bm_col, vec=(3.0, 2.0, 1.20), verts=bm_col.verts)
+    COR.create_mesh_object("Bad_Column", bm_col, col, bevel_width=0.0)
+
+    # Inject self-overlapping twin boxes + open face + unapplied scale
+    bm_twin = bmesh.new()
+    b1 = bmesh.ops.create_cube(bm_twin, size=0.8)
+    bmesh.ops.translate(bm_twin, vec=(1.0, 1.0, 0.4), verts=b1["verts"])
+    b2 = bmesh.ops.create_cube(bm_twin, size=0.8)
+    bmesh.ops.translate(bm_twin, vec=(1.2, 1.0, 0.4), verts=b2["verts"])
+    bad_twin = COR.create_mesh_object("Bad_TwinBoxes", bm_twin, col, bevel_width=0.0)
+    bad_twin.scale = (1.5, 1.0, 1.0)
+
+    # Inject BURIED_INSIDE block completely enclosed inside L0_Wall_Clean (y in [0.0, 0.20], z in [0.0, 2.6])
+    bm_buried = bmesh.new()
+    bmesh.ops.create_cube(bm_buried, size=1.0)
+    bmesh.ops.scale(bm_buried, vec=(0.6, 0.12, 0.8), verts=bm_buried.verts)
+    bmesh.ops.translate(bm_buried, vec=(3.0, 0.10, 1.30), verts=bm_buried.verts)
+    COR.create_mesh_object("Bad_Buried_Block", bm_buried, col, bevel_width=0.0)
+
+    # Empty 0-face mesh must fail topology audit
+    empty_mesh = bpy.data.meshes.new("Bad_Empty_M")
+    empty_obj = bpy.data.objects.new("Bad_Empty", empty_mesh)
+    col.objects.link(empty_obj)
+    assert not COR.audit_object_topology(empty_obj)["passed"], "0-face mesh must fail topology audit"
+    bpy.data.objects.remove(empty_obj, do_unlink=True)
+    bpy.context.view_layer.update()
+
+    bad_audit = COR.audit_scene_meshes(check_clashes=True)
+    assert not bad_audit["passed"], f"Expected failure on injected defects, got: {bad_audit}"
+    assert bad_audit["clash_count"] >= 2, f"Expected clash count >= 2, got: {bad_audit}"
+    assert "Bad_TwinBoxes" in bad_audit["failed_objects"], f"Expected Bad_TwinBoxes in failed_objects: {bad_audit}"
+
+    regen_res = COR.audit_and_regenerate(max_rounds=2)
+    assert regen_res["passed"], f"Expected audit_and_regenerate to pass, got: {regen_res}"
+    assert "__hide_r1__Bad_Column" in bpy.data.objects
+    assert "__hide_r1__Bad_TwinBoxes" in bpy.data.objects
+    assert "__hide_r1__Bad_Buried_Block" in bpy.data.objects
+    assert bpy.data.objects.get("Bad_Buried_Block") is None, "Buried block should remain archived, not a 0-face zombie"
+    assert bpy.data.objects["__hide_r1__Bad_Column"].hide_viewport is True
+    assert bpy.data.objects["__hide_r1__Bad_Column"].hide_render is True
+    assert bpy.data.objects["__hide_r1__Bad_TwinBoxes"].hide_viewport is True
+    assert bpy.data.objects["__hide_r1__Bad_TwinBoxes"].hide_render is True
+
+    active_col = bpy.data.objects.get("Bad_Column")
+    active_twin = bpy.data.objects.get("Bad_TwinBoxes")
+    assert active_col is not None and not active_col.hide_viewport
+    assert active_twin is not None and not active_twin.hide_viewport
+    assert COR.audit_object_topology(active_col)["passed"]
+    assert COR.audit_object_topology(active_twin)["passed"]
+
+    # Second round regeneration on Bad_Column must increment archive slot to __hide_r2__Bad_Column
+    def _build_col_v2(slot):
+        bm_v2 = bmesh.new()
+        bmesh.ops.create_cube(bm_v2, size=1.0)
+        bmesh.ops.scale(bm_v2, vec=(0.35, 0.35, 2.60), verts=bm_v2.verts)
+        bmesh.ops.translate(bm_v2, vec=(3.0, 2.0, 1.30), verts=bm_v2.verts)
+        return bm_v2
+
+    r2_res = COR.regenerate_component_in_place("Bad_Column", builder_fn=_build_col_v2, reason="manual_v2")
+    assert r2_res["ok"] and r2_res["archived"] == "__hide_r2__Bad_Column", f"Unexpected r2 slot: {r2_res}"
+    assert "__hide_r2__Bad_Column" in bpy.data.objects
+    assert bpy.data.objects["__hide_r2__Bad_Column"].hide_viewport is True
+    assert COR.audit_scene_meshes(check_clashes=True)["passed"]
+
+    # CASE_R06 grouping must archive __hide_r* objects into *_WIP collections
+    grp_res = R6.execute_grouping_in_blender()
+    assert "__hide_r1__Bad_Column" in bpy.data.collections["Bad_Column_WIP"].objects or any(
+        c.name.endswith("_WIP") and "__hide_r1__Bad_Column" in c.objects for c in bpy.data.collections
+    ), f"Expected __hide_r1__Bad_Column inside a *_WIP collection: {grp_res}"
+
+    # Verify adjacent CANTILEVER glazed corner produces 0 clash and LCV rejects empty spec
+    _reset_scene()
+    sp_empty = SK.spec_init(path=os.path.join(work_dir, "cant_spec.json"))
+    assert LCV.verify_levels(spec=sp_empty)["passed"] is False, "Empty spec must not silently PASS"
+    SK.spec_set("levels", [{"id": "L1", "z": 3.0, "slab": 0.30, "cut": 1.50}])
+    SK.spec_set("outline", {"L1": {"union": [[0.0, 0.0, 6.0, 4.0]], "add": [], "sub": []}})
+    SK.spec_set("edge_rules", [
+        {"level": "L1", "side": "S", "span": [0.0, 6.0], "kind": "CANTILEVER", "glazed": True},
+        {"level": "L1", "side": "E", "span": [0.0, 4.0], "kind": "CANTILEVER", "glazed": True},
+    ])
+    FK.build_all_levels(wall_t=0.28)
+    cant_audit = COR.audit_scene_meshes(check_clashes=True)
+    assert cant_audit["passed"] and cant_audit["clash_count"] == 0, f"Cantilever glazed corner clash: {cant_audit}"
+    print("[PASS] test_clash_and_topology_auto_hide_regen")
+
+
+def test_two_stage_vlm_renders(work_dir):
+    _reset_scene()
+    col = COR.get_or_create_collection("VLM_Test")
+    mat_wall = COR.make_pbr_material("Mat_Wall", (0.85, 0.82, 0.78, 1.0), metallic=0.0, roughness=0.75)
+    mat_wood = COR.make_pbr_material("Mat_Wood", (0.45, 0.28, 0.14, 1.0), metallic=0.0, roughness=0.55)
+    mat_glass = COR.make_pbr_material("Mat_Glass", (0.65, 0.82, 0.90, 0.35), metallic=0.0, roughness=0.08, alpha=0.35)
+
+    bm1 = bmesh.new()
+    bmesh.ops.create_cube(bm1, size=1.0)
+    bmesh.ops.scale(bm1, vec=(4.0, 0.25, 2.4), verts=bm1.verts)
+    bmesh.ops.translate(bm1, vec=(0.0, 1.5, 1.2), verts=bm1.verts)
+    COR.create_mesh_object("Wall_Back", bm1, col, mat=mat_wall, bevel_width=0.0)
+
+    bm2 = bmesh.new()
+    bmesh.ops.create_cube(bm2, size=1.0)
+    bmesh.ops.scale(bm2, vec=(4.4, 3.6, 0.20), verts=bm2.verts)
+    bmesh.ops.translate(bm2, vec=(0.0, 0.0, -0.10), verts=bm2.verts)
+    COR.create_mesh_object("Floor_Wood", bm2, col, mat=mat_wood, bevel_width=0.0)
+
+    bm3 = bmesh.new()
+    bmesh.ops.create_cube(bm3, size=1.0)
+    bmesh.ops.scale(bm3, vec=(1.8, 0.04, 1.8), verts=bm3.verts)
+    bmesh.ops.translate(bm3, vec=(0.0, -1.2, 0.9), verts=bm3.verts)
+    COR.create_mesh_object("Window_Glass", bm3, col, mat=mat_glass, bevel_width=0.0)
+
+    vlm_dir = os.path.join(work_dir, "vlm_two_stage")
+    r1 = COR.render_vlm_verification_views(
+        vlm_dir, round_stage="r1_shaded", names=["Cam_Iso"], convention="plan_north_up", resolution=(320, 240)
+    )
+    assert r1["round_stage"] == "r1_shaded"
+    assert r1["engine"] == "BLENDER_WORKBENCH"
+    assert bpy.context.scene.display.shading.color_type == "RANDOM"
+    p1 = r1["renders"]["Cam_Iso"]
+    assert os.path.exists(p1) and os.path.getsize(p1) > 1000, f"Missing/empty r1 render: {p1}"
+
+    r2 = COR.render_vlm_verification_views(
+        vlm_dir, round_stage="r2_lit", names=["Cam_Iso"], resolution=(320, 240)
+    )
+    assert r2["round_stage"] == "r2_lit"
+    assert r2["engine"] == "BLENDER_EEVEE"
+    assert bpy.context.scene.display.shading.color_type == "MATERIAL"
+    for lname in ("Key_Sun", "Fill_Sun", "Rim_Sun"):
+        assert lname in bpy.data.objects and bpy.data.objects[lname].type == "LIGHT", f"Missing light {lname}"
+    assert bpy.context.scene.world is not None and bpy.context.scene.world.node_tree is not None
+    assert any(n.type == "BACKGROUND" for n in bpy.context.scene.world.node_tree.nodes)
+    p2 = r2["renders"]["Cam_Iso"]
+    assert os.path.exists(p2) and os.path.getsize(p2) > 1000, f"Missing/empty r2 render: {p2}"
+    print("[PASS] test_two_stage_vlm_renders")
+
+
 def main():
     with tempfile.TemporaryDirectory(prefix="agy_v14_blender_") as tmp:
         os.environ["AGY_WORK_DIR"] = tmp
@@ -347,6 +528,8 @@ def main():
         test_cantilever_heb220_and_detail_audit(tmp)
         test_multi_level_build_verify_render_errors_and_site_yaw(tmp)
         test_benchmark_3000_objects(tmp)
+        test_clash_and_topology_auto_hide_regen(tmp)
+        test_two_stage_vlm_renders(tmp)
     print("test_blender_suite: ALL PASS")
 
 

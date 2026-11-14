@@ -21,10 +21,10 @@ head -n 6 ~/.gemini/config/plugins/abmcp/skills/autonomous-mcp-blueprint-modelin
 | 编号与文件 | 适用场景（`head -n 6` 可直读报文头） | 核心导出函数 / 一句话用法 |
 | :--- | :--- | :--- |
 | **`CASE_R01`** `recipes/case_r01_scene_and_diagnostic_colors.py` | 场景初始化、集合管理、零偏移父子挂载、原生 `RANDOM`/`MATERIAL` 着色切换与最终赋材 | `setup_clean_scene`, `set_shading_color_mode`, `finish_materials`, `create_mesh_object`, `set_parent_keep_world` |
-| **`CASE_R02`** `recipes/case_r02_bmesh_topology_audit.py` | 纯 BMesh 检查非流形边、零面积退化面、孤立顶点、未归零缩放与法线反壳（负体积） | `audit_scene_meshes`, `audit_object_topology` |
+| **`CASE_R02`** `recipes/case_r02_bmesh_topology_audit.py` | 纯 BMesh 流形/自交体检、BVHTree 跨构件重叠穿模检测、自动隐藏不良件并原位重生成 | `audit_scene_meshes`, `audit_object_topology`, `audit_scene_clashes`, `audit_and_regenerate` |
 | **`CASE_R03`** `recipes/case_r03_parametric_bmesh_builders.py` | 五大 BMesh 参数化构造：侧视拉伸、波浪侧裙、多面体壳、Y轴锥柱、闭合履带环 | `extrude_side_profile`, `build_wavy_skirt_panels`, `build_layered_polyhedral_shell`, `add_cyl_along_y`, `build_contoured_track_loop` |
-| **`CASE_R04`** `recipes/case_r04_workbench_5cam_studio.py` | P4 自适应 5 机位 Workbench Cavity+Outline 摄影棚（双投影约定、原生 `RANDOM`/`MATERIAL` 与节点特写） | `setup_workbench_studio_and_cameras`, `compute_or_lock_iso_distance`, `render_views`, `render_closeup`, `describe_studio` |
-| **`CASE_R05`** `recipes/case_r05_component_perception_crud.py` | 提取构件世界 AABB、零上下文位姿微调与保留材质槽的无损网格替换 | `inspect_scene_components`, `transform_component`, `replace_component_geometry`, `remove_components` |
+| **`CASE_R04`** `recipes/case_r04_workbench_5cam_studio.py` | P4 两阶段 VLM 视觉验收摄影棚（第1轮 Workbench 着色截图 `r1_shaded` + 第2轮 EEVEE 实光渲染 `r2_lit` + 特写） | `setup_workbench_studio_and_cameras`, `setup_lit_studio`, `render_views`, `render_lit_views`, `render_vlm_verification_views`, `render_closeup` |
+| **`CASE_R05`** `recipes/case_r05_component_perception_crud.py` | 提取构件世界 AABB、隐藏不良件 (`__hide_r<N>__`) 与原位重新生成、无损网格替换 | `inspect_scene_components`, `hide_defective_components`, `regenerate_component_in_place`, `audit_and_regenerate`, `replace_component_geometry` |
 | **`CASE_R06`** `recipes/case_r06_final_delivery_grouping.py` | P5 最终交付群组与隐藏过程归档 | `execute_grouping_in_blender` |
 | **`CASE_R07`** `recipes/case_r07_npanel_bridge_and_apis.py` | Blender N 面板 (`DSH Blender Bridge`) 选中读取与外部资产/AI 模型 API 按需桥接 | `ensure_npanel_registered`, `get_npanel_selection`, `list_npanel_api_status`, `call_npanel_api` |
 | **`CASE_R08`** `recipes/case_r08_detail_profiles_and_ledger.py` | 标准钢型材 (`HEB220`/`HEA`/`IPE`/`UPN`/方管/角钢)、木格栅、百叶扇、栏杆、窗框与细部审计台账 | `add_steel_member`, `add_slat_array`, `add_louver_leaf`, `add_railing`, `add_window`, `ledger_set`, `ledger_check`, `detail_audit` |

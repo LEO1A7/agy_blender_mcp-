@@ -420,9 +420,7 @@ def build_envelope(level_id, wall_t=0.28, skin_offset=0.05, col=None):
 
     def _has_solid_corner_wall(rule):
         k = rule.get("kind", "SOLID")
-        if k in ("SOLID", "RECESS"):
-            return True
-        if k == "CANTILEVER" and not rule.get("glazed"):
+        if k in ("SOLID", "RECESS", "GLAZED", "CANTILEVER") or (k in ("LOUVER", "SLAT") and rule.get("solid")):
             return True
         return False
 
@@ -493,12 +491,15 @@ def build_envelope(level_id, wall_t=0.28, skin_offset=0.05, col=None):
                     in_v = Vector((in_n[0], in_n[1], 0.0))
                     # Carve inset wall: return stubs + back wall
                     bm_r = bmesh.new()
-                    sp0 = (bay_p0[0] + in_v.x * r_depth, bay_p0[1] + in_v.y * r_depth)
-                    sp1 = (bay_p1[0] + in_v.x * r_depth, bay_p1[1] + in_v.y * r_depth)
+                    sp0 = (w_p0[0] + in_v.x * r_depth, w_p0[1] + in_v.y * r_depth)
+                    sp1 = (w_p1[0] + in_v.x * r_depth, w_p1[1] + in_v.y * r_depth)
                     wall_with_openings(sp0, sp1, z0, z1, wall_t, ops, inward=in_n, bm=bm_r)
-                    # Side cheek returns bridging exterior to inset wall
-                    wall_with_openings(bay_p0, sp0, z0, z1, wall_t, [], inward=(-run_n.x, -run_n.y), bm=bm_r)
-                    wall_with_openings(sp1, bay_p1, z0, z1, wall_t, [], inward=(run_n.x, run_n.y), bm=bm_r)
+                    # Side cheek returns only when recess exceeds adjacent wall thickness
+                    if r_depth > wall_t + 1e-4:
+                        cp0 = (w_p0[0] + in_v.x * wall_t, w_p0[1] + in_v.y * wall_t)
+                        cp1 = (w_p1[0] + in_v.x * wall_t, w_p1[1] + in_v.y * wall_t)
+                        wall_with_openings(cp0, sp0, z0, z1, wall_t, [], inward=(run_n.x, run_n.y), bm=bm_r)
+                        wall_with_openings(sp1, cp1, z0, z1, wall_t, [], inward=(-run_n.x, -run_n.y), bm=bm_r)
                     obj = DK.finalize_object(next_name("RecessWall", e["side"]), bm_r, col_wall, materials=[mat_wall], bevel=0.0)
                     obj["detail_audit_ok"] = True
                     created.append(obj)
@@ -553,10 +554,14 @@ def build_envelope(level_id, wall_t=0.28, skin_offset=0.05, col=None):
                                                  name=next_name("Wall", e["side"]), col=col_wall)
                         if obj:
                             created.append(obj)
+                    gt0 = (t0 - ext0 if abs(t0) < 1e-5 and ext0 < 0.0 else t0)
+                    gt1 = (t1 + ext1 if abs(t1 - L) < 1e-5 and ext1 < 0.0 else t1)
+                    g_p0 = _point_at(e, gt0)
+                    g_len = max(0.1, gt1 - gt0)
                     bm_g = bmesh.new()
-                    orig = Vector((bay_p0[0], bay_p0[1], z0 + sill_h)) - out_n * (wall_t * 0.35)
-                    panes_x = max(1, int(round(seg_len / 1.2)))
-                    DK.add_window(bm_g, orig, run_n, out_n, seg_len, (z1 - z0) - sill_h, panes=(panes_x, 1))
+                    orig = Vector((g_p0[0], g_p0[1], z0 + sill_h)) - out_n * (wall_t * 0.35)
+                    panes_x = max(1, int(round(g_len / 1.2)))
+                    DK.add_window(bm_g, orig, run_n, out_n, g_len, (z1 - z0) - sill_h, panes=(panes_x, 1))
                     g_obj = DK.finalize_object(next_name("Glaze", e["side"]), bm_g, col_det,
                                                materials=[mat_frame, mat_glass], bevel=0.003)
                     g_obj["detail_audit_ok"] = True
@@ -579,9 +584,13 @@ def build_envelope(level_id, wall_t=0.28, skin_offset=0.05, col=None):
             elif kind == "CANTILEVER":
                 # Default cantilever edge builds glazed curtain or solid wall per `solid` / `glazed` flag
                 if rule.get("glazed"):
+                    gt0 = (t0 - ext0 if abs(t0) < 1e-5 and ext0 < 0.0 else t0)
+                    gt1 = (t1 + ext1 if abs(t1 - L) < 1e-5 and ext1 < 0.0 else t1)
+                    g_p0 = _point_at(e, gt0)
+                    g_len = max(0.1, gt1 - gt0)
                     bm_g = bmesh.new()
-                    orig = Vector((bay_p0[0], bay_p0[1], z0)) - out_n * (wall_t * 0.35)
-                    DK.add_window(bm_g, orig, run_n, out_n, seg_len, z1 - z0, panes=(max(1, int(round(seg_len / 1.2))), 1))
+                    orig = Vector((g_p0[0], g_p0[1], z0)) - out_n * (wall_t * 0.35)
+                    DK.add_window(bm_g, orig, run_n, out_n, g_len, z1 - z0, panes=(max(1, int(round(g_len / 1.2))), 1))
                     created.append(DK.finalize_object(next_name("Glaze", e["side"]), bm_g, col_det,
                                                       materials=[mat_frame, mat_glass], bevel=0.003))
                 elif wall_valid and (not skin or rule.get("solid", True)):

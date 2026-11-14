@@ -1,7 +1,7 @@
 {
   "name": "abmcp",
   "displayName": "AGY Autonomous MCP 3D Modeling",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Full official Blender Lab MCP server (all 26 tools via abmcp_mcp + blender_mcp_addon) combined with Spec-driven autonomous 3D CAD, architectural, and hard-surface modeling in Blender. Features Building Spec JSON anchoring, rotated plan leveling & metric calibration, section slab elevation fitting, bmesh floor-cut IoU verification, native RANDOM shading, structural profiles, and N-panel bridge APIs.",
   "logo": "assets/logo.svg",
   "suggestedPrompts": [

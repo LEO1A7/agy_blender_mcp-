@@ -861,14 +861,14 @@ _PHASE_CARDS = {
         "G2: spec_validate 0 err & 参考层边支持度>=0.8",
     ),
     "P3": (
-        "P3 L1 体块与楼层剖切验收",
-        "build_all_levels() -> verify_levels() -> 1张 RANDOM 等轴测",
-        "G3: IoU>=0.92 & max_edge_err<=150mm & rule_violations==0 & audit passed",
+        "P3 L1 体块 · 重叠/拓扑纠偏 · 剖切验收",
+        "build_all_levels() -> audit_and_regenerate() -> verify_levels() (发现不良件统一隐藏+原位重生成)",
+        "G3: 0非流形/0重叠穿模 & IoU>=0.90 & max_edge_err<=150mm & rule_violations==0",
     ),
     "P4": (
-        "P4 L2/L3 细部构建与台账对账",
-        "detail_kit(HEB/slat/louver/railing/window) + ledger_set/check + detail_audit + render_closeup(<=3)",
-        "G4: ledger_check.passed & box_standins==[]",
+        "P4 L2/L3 细部 · 两轮 VLM 视觉验收",
+        "detail_kit + audit_and_regenerate() -> 第1轮着色截图(r1_shaded)通过后再第2轮实光渲染(r2_lit)；异常均隐藏重生成",
+        "G4: ledger_check.passed & 0穿模 & 着色截图与实光渲染双轮 VLM 通过",
     ),
     "P5": (
         "P5 终验与交付",
